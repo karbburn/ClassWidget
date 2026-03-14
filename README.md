@@ -62,15 +62,7 @@
    ```bash
    flutter run
    ```
-
----
-
-## 📈 Roadmap (Commercial Focus)
-- [ ] **AI-Powered Schedule Detection**: Optical character recognition for physical timetable photos.
-- [ ] **Cloud Sync**: Optional cross-device synchronization.
-- [ ] **Calendar Integration**: Export classes directly to Google Calendar/Outlook.
-- [ ] **Performance Analytics**: Track study hours and attendance trends.
-
+   
 ---
 
 ## 📄 License
