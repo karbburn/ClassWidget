@@ -179,6 +179,61 @@ class DatabaseHelper {
     await db.delete('events', where: 'is_imported = ?', whereArgs: [1]);
   }
 
+  Future<List<Map<String, dynamic>>> getTasks() async {
+    Database db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'events',
+      where: "type = 'task'",
+      orderBy: 'completed ASC, date ASC',
+    );
+    
+    // Map back to TaskItem format for the UI
+    return maps.map((m) => {
+      'id': m['id'],
+      'title': m['title'],
+      'due_date': m['date'],
+      'related_course': m['professor'],
+      'is_completed': m['completed'],
+    }).toList();
+  }
+
+  Future<int> insertTask(Map<String, dynamic> taskMap) async {
+    Database db = await database;
+    // Mapping TaskItem map to Event table map
+    final eventMap = {
+      'title': taskMap['title'],
+      'start_time': '',
+      'end_time': '',
+      'type': 'task',
+      'completed': taskMap['is_completed'],
+      'is_imported': 0,
+      'date': taskMap['due_date'] ?? '',
+      'professor': taskMap['related_course'],
+    };
+    return await db.insert('events', eventMap);
+  }
+
+  Future<int> updateTask(Map<String, dynamic> taskMap) async {
+    Database db = await database;
+    final eventMap = {
+      'title': taskMap['title'],
+      'completed': taskMap['is_completed'],
+      'date': taskMap['due_date'] ?? '',
+      'professor': taskMap['related_course'],
+    };
+    return await db.update(
+      'events',
+      eventMap,
+      where: 'id = ?',
+      whereArgs: [taskMap['id']],
+    );
+  }
+
+  Future<int> deleteTask(int id) async {
+    Database db = await database;
+    return await db.delete('events', where: 'id = ?', whereArgs: [id]);
+  }
+
   Future<List<ScheduleEvent>> _getSortedEventsByDate(String date) async {
     Database db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
