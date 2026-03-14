@@ -1,0 +1,23 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.classwidget">
+    <application
+        android:label="ClassWidget"
+        android:icon="@mipmap/ic_launcher">
+        
+        <!-- App Widget Provider Registration -->
+        <receiver android:name=".ClassWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info" />
+        </receiver>
+
+        <!-- List Remote Views Service Registration -->
+        <service android:name=".ListRemoteViewsService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
+    </application>
+</manifest>
