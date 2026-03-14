@@ -16,7 +16,7 @@
 - **ISO 8601 Compliance**: Robust date parsing architecture for seamless synchronization across semesters.
 
 ### 🖼️ Premium Widget Ecosystem
-- **Glassmorphism Design**: High-end translucent UI with frosted-glass effects, high-contrast typography, and backdrop blurs.
+- **Premium Dark UI**: Deep navy widget design with high-contrast typography and sky-blue accents, optimized for at-a-glance readability on any home screen.
 - **Adaptive Sizing**: Native Support for Small (2x1), Medium (4x2), and Large (4x4) interactive layouts.
 - **Interactive Checkbox**: Mark tasks as completed directly from the home screen with instant state-syncing.
 - **Smart Countdown**: Real-time "Up Next" tracking for upcoming classes and assignments.
@@ -36,7 +36,7 @@
 - **Core**: Flutter / Dart
 - **Database**: SQLite (Local-first reliability)
 - **Native Bridge**: Kotlin (Android AppWidget Provider)
-- **Design System**: Custom Glassmorphism (CSS-inspired XML layouts)
+- **Design System**: Custom dark UI with CSS-inspired XML layouts
 - **State Management**: Provider / Controller patterns
 - **Utilities**: HomeWidget, Excel Parser, Intl (Localization)
 
