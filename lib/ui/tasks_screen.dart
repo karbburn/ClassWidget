@@ -35,13 +35,13 @@ class _TasksScreenState extends State<TasksScreen> {
     final updated = task.copyWith(isCompleted: !task.isCompleted);
     await dbHelper.updateTask(updated.toMap());
     _loadTasks();
-    WidgetDataService.refreshWidget();
+    await WidgetDataService.refreshWidget(immediate: true);
   }
 
   Future<void> _deleteTask(int id) async {
     await dbHelper.deleteTask(id);
     _loadTasks();
-    WidgetDataService.refreshWidget();
+    await WidgetDataService.refreshWidget(immediate: true);
   }
 
   void _showTaskDialog([TaskItem? task]) {
@@ -137,7 +137,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
                   if (mounted) Navigator.pop(context);
                   _loadTasks();
-                  WidgetDataService.refreshWidget();
+                  await WidgetDataService.refreshWidget(immediate: true);
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),

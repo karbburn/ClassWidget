@@ -12,11 +12,19 @@ class WidgetDataService {
   static Timer? _debounceTimer;
 
   /// Centralized entry point for widget refreshes. 
-  /// Uses debouncing to prevent excessive updates.
-  static void refreshWidget() {
+  /// Uses debouncing by default to prevent excessive updates.
+  /// Set [immediate] to true for critical updates (e.g. app launch).
+  static Future<void> refreshWidget({bool immediate = false}) async {
+    if (immediate) {
+      _debounceTimer?.cancel();
+      LogService.log('Immediate widget refresh triggered.', tag: 'WidgetDataService');
+      await syncTodaySchedule();
+      return;
+    }
+
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
-      LogService.log('Refreshing widget data...', tag: 'WidgetDataService');
+      LogService.log('Debounced widget refresh executing...', tag: 'WidgetDataService');
       await syncTodaySchedule();
     });
   }

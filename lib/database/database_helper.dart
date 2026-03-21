@@ -159,6 +159,20 @@ class DatabaseHelper {
     return List.generate(maps.length, (i) => ScheduleEvent.fromMap(maps[i]));
   }
 
+  /// Returns events for a given DateTime, sorted with timed events first (ASC)
+  /// and untimed events (empty start_time) at the bottom.
+  Future<List<ScheduleEvent>> getEventsForDateTime(DateTime date) async {
+    final dateStr = '${date.year.toString()}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    Database db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'events',
+      where: 'date = ?',
+      whereArgs: [dateStr],
+      orderBy: "CASE WHEN start_time = '' THEN 1 ELSE 0 END, start_time ASC",
+    );
+    return List.generate(maps.length, (i) => ScheduleEvent.fromMap(maps[i]));
+  }
+
   Future<void> updateEventCompletion(int id, bool completed) async {
     Database db = await database;
     await db.update(

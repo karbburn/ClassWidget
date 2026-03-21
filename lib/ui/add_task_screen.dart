@@ -61,7 +61,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
 
     await DatabaseHelper().insertEvent(task);
-    WidgetDataService.refreshWidget();
+    await WidgetDataService.refreshWidget(immediate: true);
     if (mounted) Navigator.pop(context, true);
   }
 

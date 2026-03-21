@@ -60,7 +60,7 @@ class _ImportScreenState extends State<ImportScreen> {
                 setState(() => _isLoading = false);
                 if (result.success && mounted) {
                   _showSuccessDialog(result, sectionLabel);
-                  WidgetDataService.refreshWidget();
+                  await WidgetDataService.refreshWidget(immediate: true);
                 } else if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(result.message), backgroundColor: Colors.red),
@@ -165,7 +165,7 @@ class _ImportScreenState extends State<ImportScreen> {
                    if (confirm == true) {
                      await scheduleImport.dbHelper.deleteImportedEvents();
                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Imported schedule cleared!')));
-                     WidgetDataService.refreshWidget();
+                     await WidgetDataService.refreshWidget(immediate: true);
                    }
                 },
                 icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),

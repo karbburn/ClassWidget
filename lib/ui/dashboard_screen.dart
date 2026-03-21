@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../database/database_helper.dart';
-import '../models/schedule_event.dart';
-import '../services/time_helpers.dart';
 import '../services/widget_data_service.dart';
 import '../services/theme_controller.dart';
 import '../services/preferences_service.dart';
-import '../widgets/theme_toggle.dart';
 import '../services/log_service.dart';
-import 'add_task_screen.dart';
-import 'import_screen.dart';
+import '../widgets/theme_toggle.dart';
+import 'day_schedule_page.dart';
 
 class DashboardScreen extends StatefulWidget {
   final ThemeController themeController;
@@ -19,53 +14,66 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  List<ScheduleEvent> _allEvents = [];
-  bool _isLoading = true;
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
+  static const int _totalPages = 14;
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
   String? _selectedSection;
+
+  // GlobalKeys to trigger refresh on individual pages
+  final Map<int, GlobalKey<dynamic>> _pageKeys = {};
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addObserver(this);
+    _loadSection();
+    _syncWidget();
   }
 
-  Future<void> _loadData() async {
-    try {
-      setState(() => _isLoading = true);
-      final todayStr = TimeHelpers.formatDate(DateTime.now());
-      final events = await DatabaseHelper().getEventsForDate(todayStr);
-      final section = await PreferencesService.getSelectedSection();
-      
-      // Sort logic: Timed events first, then untimed events at bottom
-      events.sort((a, b) {
-        if (a.startTime.isEmpty && b.startTime.isNotEmpty) return 1;
-        if (a.startTime.isNotEmpty && b.startTime.isEmpty) return -1;
-        return a.startTime.compareTo(b.startTime);
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Reset to today's page and refresh data
+      if (_pageController.hasClients && _currentPage != 0) {
+        _pageController.jumpToPage(0);
+      }
+      setState(() {
+        _currentPage = 0;
+        _pageKeys.clear();
       });
-
-      if (mounted) {
-        setState(() {
-          _allEvents = events;
-          _selectedSection = section;
-          _isLoading = false;
-        });
-      }
-      WidgetDataService.refreshWidget();
-    } catch (e, stack) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading data: $e'))
-        );
-      }
-      LogService.error('Dashboard load failed', e, stack);
+      _syncWidget();
     }
   }
 
-  Future<void> _toggleTaskCompletion(ScheduleEvent event) async {
-    await DatabaseHelper().updateEventCompletion(event.id!, !event.completed);
-    _loadData();
+  Future<void> _loadSection() async {
+    final section = await PreferencesService.getSelectedSection();
+    if (mounted) setState(() => _selectedSection = section);
+  }
+
+  Future<void> _syncWidget() async {
+    try {
+      await WidgetDataService.refreshWidget(immediate: true);
+    } catch (e, stack) {
+      LogService.error('Widget sync failed', e, stack);
+    }
+  }
+
+  DateTime _dateForIndex(int index) {
+    return DateTime.now().add(Duration(days: index));
+  }
+
+  void _onDataChanged() {
+    // Re-sync the widget (only today's data matters for widget)
+    _syncWidget();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -91,15 +99,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
+            onPressed: () {
+              // Force rebuild the current page
+              setState(() {
+                _pageKeys.clear();
+              });
+            },
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _allEvents.isEmpty
-              ? _buildEmptyState()
-              : _buildEventList(),
+      body: Column(
+        children: [
+          // Page indicator dots
+          _buildPageIndicator(),
+          // Swipeable pages
+          Expanded(
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: _totalPages,
+              onPageChanged: (index) {
+                setState(() => _currentPage = index);
+              },
+              itemBuilder: (context, index) {
+                _pageKeys.putIfAbsent(index, () => GlobalKey());
+                return DaySchedulePage(
+                  key: _pageKeys[index],
+                  date: _dateForIndex(index),
+                  pageIndex: index,
+                  onDataChanged: _onDataChanged,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -108,7 +141,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             heroTag: 'import_fab',
             onPressed: () async {
               final result = await Navigator.pushNamed(context, '/import');
-              if (result == true) _loadData();
+              if (result == true) {
+                setState(() => _pageKeys.clear());
+                _syncWidget();
+              }
             },
             child: const Icon(Icons.file_upload_outlined),
           ),
@@ -117,7 +153,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             heroTag: 'add_task_fab',
             onPressed: () async {
               final result = await Navigator.pushNamed(context, '/add-task');
-              if (result == true) _loadData();
+              if (result == true) {
+                setState(() => _pageKeys.clear());
+                _syncWidget();
+              }
             },
             icon: const Icon(Icons.add_task),
             label: const Text('Add Task'),
@@ -127,107 +166,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
+  Widget _buildPageIndicator() {
+    final theme = Theme.of(context);
+    // Show a compact row: left arrow, dots for nearby pages, right arrow
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.calendar_today_outlined,
-              size: 64, color: Theme.of(context).disabledColor),
-          const SizedBox(height: 16),
-          const Text('Your day is clear! 🎉',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const Text('No classes or tasks scheduled for today.'),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pushNamed(context, '/import'),
-            icon: const Icon(Icons.file_upload_outlined),
-            label: const Text('Import Schedule'),
+          // Left chevron
+          GestureDetector(
+            onTap: _currentPage > 0
+                ? () => _pageController.previousPage(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut)
+                : null,
+            child: Icon(
+              Icons.chevron_left,
+              color: _currentPage > 0
+                  ? theme.colorScheme.primary
+                  : theme.disabledColor,
+            ),
+          ),
+          const SizedBox(width: 4),
+          // Dots — show up to 7 centered around the current page
+          ...List.generate(_totalPages.clamp(0, 7), (i) {
+            final startIndex = (_currentPage - 3).clamp(0, _totalPages - 7);
+            final dotIndex = startIndex + i;
+            if (dotIndex >= _totalPages) return const SizedBox.shrink();
+            final isActive = dotIndex == _currentPage;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: isActive ? 20 : 8,
+              height: 8,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                color: isActive
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.outlineVariant,
+              ),
+            );
+          }),
+          const SizedBox(width: 4),
+          // Right chevron
+          GestureDetector(
+            onTap: _currentPage < _totalPages - 1
+                ? () => _pageController.nextPage(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut)
+                : null,
+            child: Icon(
+              Icons.chevron_right,
+              color: _currentPage < _totalPages - 1
+                  ? theme.colorScheme.primary
+                  : theme.disabledColor,
+            ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildEventList() {
-    final now = DateTime.now();
-    final currentTimeMinutes = TimeHelpers.getMinutes(DateFormat('HH:mm').format(now));
-
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _allEvents.length,
-        itemBuilder: (context, index) {
-          final event = _allEvents[index];
-          final isTask = event.type == 'task';
-          
-          bool isCurrent = false;
-          if (!isTask && event.startTime.isNotEmpty && event.endTime.isNotEmpty) {
-            final startMinutes = TimeHelpers.getMinutes(event.startTime);
-            final endMinutes = TimeHelpers.getMinutes(event.endTime);
-            isCurrent = currentTimeMinutes >= startMinutes && currentTimeMinutes <= endMinutes;
-          }
-
-          return Card(
-            elevation: isCurrent ? 4 : 1,
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: isCurrent 
-                ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)
-                : BorderSide.none,
-            ),
-            child: ListTile(
-              onTap: isTask ? () => _toggleTaskCompletion(event) : null,
-              onLongPress: isTask ? () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AddTaskScreen(eventToEdit: event)),
-                );
-                if (result == true) _loadData();
-              } : null,
-              leading: isTask 
-                ? Checkbox(
-                    value: event.completed,
-                    onChanged: (_) => _toggleTaskCompletion(event),
-                    shape: const CircleBorder(),
-                  )
-                : Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: (isCurrent 
-                        ? Theme.of(context).colorScheme.primaryContainer 
-                        : Theme.of(context).colorScheme.surfaceContainerHighest).withOpacity(0.5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      isCurrent ? Icons.play_arrow : Icons.class_outlined,
-                      color: isCurrent ? Theme.of(context).colorScheme.primary : null,
-                    ),
-                  ),
-              title: Text(
-                event.title,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  decoration: event.completed ? TextDecoration.lineThrough : null,
-                  color: event.completed ? Colors.grey : null,
-                ),
-              ),
-              subtitle: Text(
-                event.startTime.isEmpty ? 'All Day' : '${event.startTime} - ${event.endTime}',
-                style: TextStyle(
-                  decoration: event.completed ? TextDecoration.lineThrough : null,
-                ),
-              ),
-              trailing: isCurrent 
-                  ? const Badge(label: Text('Now'))
-                  : isTask && event.notes != null 
-                    ? const Icon(Icons.notes, size: 16)
-                    : null,
-            ),
-          );
-        },
       ),
     );
   }

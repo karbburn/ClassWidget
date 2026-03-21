@@ -1,5 +1,18 @@
 # ClassWidget Changelog
 
+## v1.1.0
+
+Horizontal swipe navigation and improved synchronization.
+
+Features:
+
+* **Horizontal Swipe Navigation**: Seamlessly browse schedules for up to 14 days directly from the dashboard.
+* **Automatic Midnight Sync**: Native Android listeners ensure the widget is always up-to-date at the start of a new day.
+* **Zero-Touch Background Refresh**: Flutter background tasks now wake up on system time changes for instant data consistency.
+* **Dashboard State Management**: Fixed issue where app kept previous day's view on resume; now automatically resets to today.
+
+---
+
 ## v1.0.0
 
 Initial release.

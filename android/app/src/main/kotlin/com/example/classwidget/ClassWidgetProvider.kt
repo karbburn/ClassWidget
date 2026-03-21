@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.widget.RemoteViews
 import android.widget.Toast
 import es.antonborri.home_widget.HomeWidgetPlugin
+import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -35,6 +36,27 @@ class ClassWidgetProvider : AppWidgetProvider() {
                     launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     context.startActivity(launchIntent)
                 }
+            }
+            "android.intent.action.DATE_CHANGED",
+            "android.intent.action.TIME_SET",
+            "android.intent.action.TIMEZONE_CHANGED",
+            "android.intent.action.TIME_CHANGED" -> {
+                // System date/time changed (likely midnight transition or manual change)
+                val appWidgetManager = AppWidgetManager.getInstance(context)
+                val thisWidget = android.content.ComponentName(context, ClassWidgetProvider::class.java)
+                val appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
+                
+                // Trigger Flutter background sync
+                try {
+                    HomeWidgetBackgroundIntent.getBroadcast(
+                        context,
+                        Uri.parse("homeWidget://update")
+                    ).send()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                
+                onUpdate(context, appWidgetManager, appWidgetIds)
             }
         }
         super.onReceive(context, intent)
@@ -147,7 +169,12 @@ class ClassWidgetProvider : AppWidgetProvider() {
 
         val views = RemoteViews(context.packageName, layoutId)
         
-        views.setTextViewText(R.id.widget_title, "ClassWidget · $dayName")
+        // Logical check: Is the cached data from today?
+        val currentDayName = java.text.SimpleDateFormat("EEEE", java.util.Locale.getDefault()).format(java.util.Date())
+        val isStale = dayName != "Today" && !dayName.equals(currentDayName, ignoreCase = true)
+
+        val widgetTitle = if (isStale) "Schedule Outdated" else "ClassWidget · $dayName"
+        views.setTextViewText(R.id.widget_title, widgetTitle)
 
         if (isEmpty) {
             views.setViewVisibility(R.id.empty_view, android.view.View.VISIBLE)

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:workmanager/workmanager.dart';
 import 'services/widget_data_service.dart';
 import 'services/log_service.dart';
@@ -11,10 +12,17 @@ import 'services/theme_controller.dart';
 void callbackDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
     LogService.log('Background task $taskName started', tag: 'WorkManager');
-    // Feature #3: Midnight refresh
     await WidgetDataService.syncTodaySchedule();
     return Future.value(true);
   });
+}
+
+@pragma('vm:entry-point')
+Future<void> backgroundCallback(Uri? uri) async {
+  if (uri?.host == 'update') {
+    LogService.log('HomeWidget background update triggered', tag: 'HomeWidget');
+    await WidgetDataService.syncTodaySchedule();
+  }
 }
 
 void main() async {
@@ -26,6 +34,8 @@ void main() async {
     callbackDispatcher,
     isInDebugMode: false, // Set to false for release
   );
+
+  await HomeWidget.registerBackgroundCallback(backgroundCallback);
 
   // Register periodic task for every 3 hours (more frequent than midnight to stay updated)
   await Workmanager().registerPeriodicTask(
