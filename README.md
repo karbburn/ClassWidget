@@ -2,7 +2,7 @@
 
 [![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)](https://flutter.dev)
 [![Android](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://android.com)
-[![Stable Version](https://img.shields.io/badge/Release-v1.0.0-blue.svg?style=for-the-badge)](https://github.com/karbburn/ClassWidget/releases)
+[![Stable Version](https://img.shields.io/badge/Release-v2.0.0-blue.svg?style=for-the-badge)](https://github.com/karbburn/ClassWidget/releases)
 
 **ClassWidget** is a premium, student-centric schedule management application designed to bridge the gap between complex university timetables and the Android home screen. With a focus on high-end aesthetics and zero-friction utility, it transforms the way students manage their academic lives.
 
@@ -25,10 +25,11 @@
 - **Context-Aware Tasks**: Link assignments directly to specific course dates.
 - **Intuitive Workflow**: Unified dashboard for managing classes and to-dos in a single, chronological timeline.
 
-### 🎨 State-of-the-Art UI/UX
-- **Smooth Theming**: Seamless Dark/Light mode transitions.
-- **Modern Palette**: Tailored colors (Slate-900, Sky-400) designed for professional, long-term use.
-
+### 🎨 State-of-the-Art UI/UX & Accessibility (v2.0)
+- **Dark Academic Gold Theme**: A high-contrast color palette paired with readable local fonts (Outfit for headers, Inter for body) to enhance legibility.
+- **Modern Navigation**: Replaced the drawer with a persistent Bottom Navigation Bar for easier one-handed reachability.
+- **Refined Schedule View**: Color-coded subject assignments, staggered animations for smoother rendering, and clearer empty states.
+- **Accessibility Enhancements**: Simplified Theme Toggle (binary Light/Dark mode) and improved touch targets.
 ---
 
 ## 🛠️ Technology Stack
