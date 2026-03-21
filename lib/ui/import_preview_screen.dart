@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/schedule_event.dart';
 import 'package:intl/intl.dart';
+import '../utils/color_utils.dart';
 
 class ImportPreviewScreen extends StatefulWidget {
   final List<ScheduleEvent> events;
@@ -148,30 +149,25 @@ class _ImportPreviewScreenState extends State<ImportPreviewScreen> {
                   ],
                 ),
                 const SizedBox(height: 4),
-                SizedBox(
-                  height: 40,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: allSubjects.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (context, idx) {
-                      final subject = allSubjects[idx];
-                      final isSelected = !_deselectedSubjects.contains(subject);
-                      return FilterChip(
-                        label: Text(subject, style: const TextStyle(fontSize: 12)),
-                        selected: isSelected,
-                        onSelected: (val) {
-                          setState(() {
-                            if (val) {
-                              _deselectedSubjects.remove(subject);
-                            } else {
-                              _deselectedSubjects.add(subject);
-                            }
-                          });
-                        },
-                      );
-                    },
-                  ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: allSubjects.map((subject) {
+                    final isSelected = !_deselectedSubjects.contains(subject);
+                    return FilterChip(
+                      label: Text(subject, style: const TextStyle(fontSize: 12)),
+                      selected: isSelected,
+                      onSelected: (val) {
+                        setState(() {
+                          if (val) {
+                            _deselectedSubjects.remove(subject);
+                          } else {
+                            _deselectedSubjects.add(subject);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile(
@@ -224,68 +220,123 @@ class _ImportPreviewScreenState extends State<ImportPreviewScreen> {
                       ...dayEvents.map((e) {
                         // Check for conflicts (other events on same day with same start time)
                         final hasConflict = dayEvents.where((other) => other != e && other.startTime == e.startTime).isNotEmpty;
+                        final subjectColor = ColorUtils.getSubjectColor(e.title);
+                        final theme = Theme.of(context);
                         
-                        return Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: theme.cardTheme.color,
                             borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                              color: hasConflict ? Colors.orange.withOpacity(0.5) : Theme.of(context).dividerColor,
-                              width: hasConflict ? 2 : 1,
+                            border: Border.all(
+                              color: hasConflict 
+                                ? Colors.orangeAccent.withOpacity(0.5) 
+                                : theme.colorScheme.outlineVariant.withOpacity(0.3),
+                              width: hasConflict ? 1.5 : 1,
                             ),
                           ),
-                          child: ListTile(
-                            leading: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                              decoration: BoxDecoration(
-                                color: hasConflict 
-                                  ? Colors.orangeAccent.withOpacity(0.2)
-                                  : Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                e.startTime,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold, 
-                                  fontSize: 13,
-                                  color: hasConflict ? Colors.orange[900] : null,
-                                ),
-                              ),
-                            ),
-                            title: Row(
-                              children: [
-                                Expanded(child: Text(e.title, style: const TextStyle(fontWeight: FontWeight.bold))),
-                                if (hasConflict)
-                                  const Tooltip(
-                                    message: 'Time Conflict',
-                                    child: Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Container(width: 6, color: subjectColor),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                                            decoration: BoxDecoration(
+                                              color: hasConflict 
+                                                ? Colors.orangeAccent.withOpacity(0.15)
+                                                : theme.colorScheme.primary.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: hasConflict
+                                                  ? Colors.orangeAccent.withOpacity(0.3)
+                                                  : theme.colorScheme.primary.withOpacity(0.2),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              e.startTime,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold, 
+                                                fontSize: 13,
+                                                color: hasConflict ? Colors.orangeAccent : theme.colorScheme.primary,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: Text(
+                                                        e.title, 
+                                                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                                                      ),
+                                                    ),
+                                                    if (hasConflict)
+                                                      const Tooltip(
+                                                        message: 'Time Conflict',
+                                                        child: Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 18),
+                                                      ),
+                                                    const SizedBox(width: 4),
+                                                    InkWell(
+                                                      onTap: () {
+                                                        setState(() {
+                                                          _localEvents.remove(e);
+                                                        });
+                                                      },
+                                                      borderRadius: BorderRadius.circular(12),
+                                                      child: const Padding(
+                                                        padding: EdgeInsets.all(4.0),
+                                                        child: Icon(Icons.close, size: 18, color: Colors.grey),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '${e.endTime} • Section: ${e.section ?? "General"}',
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                                                  ),
+                                                ),
+                                                if (_showInstructors && e.professor != null)
+                                                  Padding(
+                                                    padding: const EdgeInsets.only(top: 4),
+                                                    child: Text(
+                                                      '👤 ${e.professor}', 
+                                                      style: TextStyle(
+                                                        fontStyle: FontStyle.italic,
+                                                        fontSize: 12,
+                                                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                IconButton(
-                                  icon: const Icon(Icons.close, size: 18, color: Colors.grey),
-                                  onPressed: () {
-                                    setState(() {
-                                      _localEvents.remove(e);
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('${e.endTime} • Source: ${e.section ?? "General"}'),
-                                if (_showInstructors && e.professor != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2),
-                                    child: Text('👤 ${e.professor}', style: const TextStyle(fontStyle: FontStyle.italic)),
-                                  ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         );
                       }),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                     ],
                   );
                 },

@@ -111,75 +111,149 @@ class _ImportScreenState extends State<ImportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
       appBar: AppBar(title: const Text('Import Schedule')),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Icon(Icons.file_upload_outlined, size: 80, color: Colors.blueGrey),
-            const SizedBox(height: 24),
-            Text(
-              'Update Your Timetable',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Select an Excel (.xlsx) or CSV file provided by your institute.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-            const Spacer(),
-            if (_isLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              ElevatedButton.icon(
-                onPressed: _handleFilePick,
-                icon: const Icon(Icons.file_open),
-                label: const Text('SELECT FILE'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Add Your Classes',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
-            const SizedBox(height: 12),
-            if (!_isLoading)
-              OutlinedButton.icon(
-                onPressed: () async {
-                   final confirm = await showDialog<bool>(
-                     context: context,
-                     builder: (context) => AlertDialog(
-                       title: const Text('Clear Schedule?'),
-                       content: const Text('This will delete all imported classes. Manually added tasks and events will be saved.'),
-                       actions: [
-                         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
-                         TextButton(
-                           onPressed: () => Navigator.pop(context, true), 
-                           child: const Text('CLEAR ALL', style: TextStyle(color: Colors.red))
-                         ),
-                       ],
-                     ),
-                   );
-                   if (confirm == true) {
-                     await scheduleImport.dbHelper.deleteImportedEvents();
-                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Imported schedule cleared!')));
-                     await WidgetDataService.refreshWidget(immediate: true);
-                   }
-                },
-                icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
-                label: const Text('CLEAR IMPORTED DATA', style: TextStyle(color: Colors.red)),
-                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+              const SizedBox(height: 8),
+              Text(
+                'Upload your timetable in Excel or CSV format.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                ),
               ),
-            const SizedBox(height: 16),
-            const Text(
-              'Note: Importing a new file will replace your previously imported schedule, but manually added events will stay.',
-              style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-          ],
+              const SizedBox(height: 32),
+              
+              // Upload Zone
+              Expanded(
+                child: Material(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    onTap: _isLoading ? null : _handleFilePick,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: theme.colorScheme.primary.withOpacity(0.5),
+                          width: 2,
+                          style: BorderStyle.solid,
+                        ),
+                      ),
+                      child: Center(
+                        child: _isLoading
+                            ? Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Processing File...',
+                                    style: TextStyle(
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(20),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primary.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.cloud_upload_outlined,
+                                      size: 48,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  Text(
+                                    'Tap to Select File',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Supports .xlsx and .csv',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              if (!_isLoading)
+                OutlinedButton.icon(
+                  onPressed: () async {
+                     final confirm = await showDialog<bool>(
+                       context: context,
+                       builder: (context) => AlertDialog(
+                         title: const Text('Clear Schedule?'),
+                         content: const Text('This will delete all imported classes. Manually added tasks and events will be saved.'),
+                         actions: [
+                           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
+                           TextButton(
+                             onPressed: () => Navigator.pop(context, true), 
+                             child: const Text('CLEAR ALL', style: TextStyle(color: Colors.redAccent))
+                           ),
+                         ],
+                       ),
+                     );
+                     if (confirm == true) {
+                       await scheduleImport.dbHelper.deleteImportedEvents();
+                       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Imported schedule cleared!')));
+                       await WidgetDataService.refreshWidget(immediate: true);
+                     }
+                  },
+                  icon: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent),
+                  label: const Text('CLEAR IMPORTED DATA', style: TextStyle(color: Colors.redAccent)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: BorderSide(color: Colors.redAccent.withOpacity(0.5)),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              Text(
+                'Note: Importing a new file replaces previously imported schedules. Manually added events will remain untouched.',
+                style: TextStyle(
+                  fontSize: 12, 
+                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5), 
+                  fontStyle: FontStyle.italic
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -133,48 +133,19 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         ],
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton.small(
-            heroTag: 'import_fab',
-            onPressed: () async {
-              final result = await Navigator.pushNamed(context, '/import');
-              if (result == true) {
-                setState(() => _pageKeys.clear());
-                _syncWidget();
-              }
-            },
-            child: const Icon(Icons.file_upload_outlined),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: 'add_task_fab',
-            onPressed: () async {
-              final result = await Navigator.pushNamed(context, '/add-task');
-              if (result == true) {
-                setState(() => _pageKeys.clear());
-                _syncWidget();
-              }
-            },
-            icon: const Icon(Icons.add_task),
-            label: const Text('Add Task'),
-          ),
-        ],
-      ),
+
     );
   }
 
   Widget _buildPageIndicator() {
     final theme = Theme.of(context);
-    // Show a compact row: left arrow, dots for nearby pages, right arrow
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Left chevron
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
           GestureDetector(
             onTap: _currentPage > 0
                 ? () => _pageController.previousPage(
@@ -188,28 +159,50 @@ class _DashboardScreenState extends State<DashboardScreen>
                   : theme.disabledColor,
             ),
           ),
-          const SizedBox(width: 4),
-          // Dots — show up to 7 centered around the current page
+          const SizedBox(width: 8),
           ...List.generate(_totalPages.clamp(0, 7), (i) {
             final startIndex = (_currentPage - 3).clamp(0, _totalPages - 7);
             final dotIndex = startIndex + i;
             if (dotIndex >= _totalPages) return const SizedBox.shrink();
             final isActive = dotIndex == _currentPage;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: isActive ? 20 : 8,
-              height: 8,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4),
-                color: isActive
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.outlineVariant,
+            
+            // Calculate date for this chunk
+            final date = _dateForIndex(dotIndex);
+            // Format to abbreviation, e.g., 'Mon'
+            final dayName = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][date.weekday - 1];
+            
+            return GestureDetector(
+              onTap: () => _pageController.animateToPage(
+                  dotIndex,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: isActive
+                      ? theme.colorScheme.primary
+                      : Colors.transparent,
+                  border: isActive
+                      ? null
+                      : Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.5)),
+                ),
+                child: Text(
+                  dayName,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                    color: isActive
+                        ? theme.colorScheme.onPrimary
+                        : theme.textTheme.bodyMedium?.color,
+                  ),
+                ),
               ),
             );
           }),
-          const SizedBox(width: 4),
-          // Right chevron
+          const SizedBox(width: 8),
           GestureDetector(
             onTap: _currentPage < _totalPages - 1
                 ? () => _pageController.nextPage(
@@ -224,6 +217,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
           ),
         ],
+      ),
       ),
     );
   }

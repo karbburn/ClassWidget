@@ -13,7 +13,7 @@ class ThemeToggle extends StatelessWidget {
     
     return Container(
       height: 36,
-      width: 108, // Fixed width for consistent segmented feel (36 * 3)
+      width: 72, // Fixed width for consistent segmented feel (36 * 2)
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: isDark 
@@ -32,15 +32,15 @@ class ThemeToggle extends StatelessWidget {
             curve: Curves.elasticOut, // More organic feel like framer-motion
             alignment: _getAlignment(controller.themeMode),
             child: FractionallySizedBox(
-              widthFactor: 1 / 3,
+              widthFactor: 1 / 2,
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF38BDF8) : Colors.white,
+                  color: theme.colorScheme.primary, // Using theme Primary (Gold) instead of hardcoded blue
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 6,
+                      color: theme.colorScheme.primary.withOpacity(0.3),
+                      blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
                   ],
@@ -51,7 +51,6 @@ class ThemeToggle extends StatelessWidget {
           // Icons
           Row(
             children: [
-              _buildOption(context, ThemeMode.system, Icons.monitor_outlined),
               _buildOption(context, ThemeMode.light, Icons.light_mode_outlined),
               _buildOption(context, ThemeMode.dark, Icons.dark_mode_outlined),
             ],
@@ -75,8 +74,8 @@ class ThemeToggle extends StatelessWidget {
             icon,
             size: 16,
             color: isSelected
-                ? (isDark ? Colors.white : theme.colorScheme.primary)
-                : (isDark ? Colors.white70 : Colors.black45),
+                ? theme.colorScheme.onPrimary // Black/Dark icon on the Gold background
+                : theme.colorScheme.onSurface.withOpacity(0.5), // Muted for unselected
           ),
         ),
       ),
@@ -85,11 +84,9 @@ class ThemeToggle extends StatelessWidget {
 
   Alignment _getAlignment(ThemeMode mode) {
     switch (mode) {
-      case ThemeMode.light:
-        return Alignment.center;
       case ThemeMode.dark:
         return Alignment.centerRight;
-      case ThemeMode.system:
+      case ThemeMode.light:
       default:
         return Alignment.centerLeft;
     }

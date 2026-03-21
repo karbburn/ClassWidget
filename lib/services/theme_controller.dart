@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'preferences_service.dart';
 
 class ThemeController extends ChangeNotifier {
-  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode _themeMode = ThemeMode.dark;
 
   ThemeMode get themeMode => _themeMode;
 
@@ -29,7 +29,7 @@ class ThemeController extends ChangeNotifier {
       case 'dark':
         return ThemeMode.dark;
       default:
-        return ThemeMode.system;
+        return ThemeMode.dark;
     }
   }
 }

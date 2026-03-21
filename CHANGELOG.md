@@ -1,5 +1,19 @@
 # ClassWidget Changelog
 
+## v2.0.0
+
+Improved UI/UX changes for better accessibility and aesthetics.
+
+Features:
+* **Dark Academic Gold Theme**: A high-contrast color palette paired with readable local fonts (Outfit for headers, Inter for body) to enhance legibility.
+* **Modern Navigation**: Replaced the drawer with a persistent Bottom Navigation Bar for easier one-handed reachability.
+* **Refined Schedule View**: Color-coded subject assignments, staggered animations for smoother rendering, and clearer empty states.
+* **Enhanced Task Management**: Added swipe-to-delete gestures, visual priority indicators, and interactive completion toggles.
+* **Redesigned Import Flow**: Better layout framing to prevent UI overflow on smaller screens and high-contrast confirmation dialogs.
+* **Accessibility Enhancements**: Simplified Theme Toggle (binary Light/Dark mode) and improved touch targets.
+
+---
+
 ## v1.1.0
 
 Horizontal swipe navigation and improved synchronization.
