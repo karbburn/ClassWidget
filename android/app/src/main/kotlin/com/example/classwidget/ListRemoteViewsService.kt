@@ -8,6 +8,9 @@ import android.widget.RemoteViewsService
 import es.antonborri.home_widget.HomeWidgetPlugin
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class ListRemoteViewsService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {
@@ -17,46 +20,69 @@ class ListRemoteViewsService : RemoteViewsService() {
 
 class ListRemoteViewsFactory(private val context: Context) : RemoteViewsService.RemoteViewsFactory {
     
-    private var eventsList: JSONArray = JSONArray()
+    private var todayEvents: JSONArray = JSONArray()
     private var showProfessorNames: Boolean = true
 
     override fun onCreate() {}
 
     override fun onDataSetChanged() {
         val widgetData = HomeWidgetPlugin.getData(context)
-        val jsonString = widgetData.getString("today_schedule", "{}")
+        val jsonString = widgetData.getString("schedule_data", "{}")
         
+        // Dynamically determine "today" from system clock
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        
+        todayEvents = JSONArray()
         try {
             val jsonObject = JSONObject(jsonString)
-            eventsList = jsonObject.optJSONArray("events") ?: JSONArray()
             showProfessorNames = jsonObject.optBoolean("showProfessorNames", true)
+            val allEvents = jsonObject.optJSONArray("events") ?: JSONArray()
+            
+            for (i in 0 until allEvents.length()) {
+                val event = allEvents.getJSONObject(i)
+                val eventDate = event.optString("date", "")
+                if (eventDate == todayStr) {
+                    val type = event.optString("type", "class")
+                    val completed = event.optBoolean("completed", false)
+                    if (type == "class" || !completed) {
+                        todayEvents.put(event)
+                    }
+                }
+            }
         } catch (e: Exception) {
-            eventsList = JSONArray()
+            todayEvents = JSONArray()
         }
     }
 
     override fun onDestroy() {}
 
-    override fun getCount(): Int = eventsList.length()
+    override fun getCount(): Int = todayEvents.length()
 
     override fun getViewAt(position: Int): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_item)
         
         try {
-            val event = eventsList.getJSONObject(position)
+            val event = todayEvents.getJSONObject(position)
             val id = event.optInt("id", -1)
             val title = event.optString("title", "Unknown")
-            val time = event.optString("time", "")
+            val startTime = event.optString("startTime", "")
+            val endTime = event.optString("endTime", "")
             val professor = event.optString("professor", "")
-            val isCurrent = event.optBoolean("isCurrent", false)
             val type = event.optString("type", "class")
+
+            // Dynamically compute isCurrent using system time
+            val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+            val isCurrent = type == "class" && startTime.isNotEmpty() && endTime.isNotEmpty() &&
+                            currentTime >= startTime && currentTime <= endTime
+
+            val timeDisplay = if (startTime.isEmpty()) "All Day" else "$startTime - $endTime"
 
             views.setTextViewText(R.id.item_title, title)
             
             val subtitle = if (type == "task") {
-                if (professor.isNotEmpty() && professor != "null") "Due: $time • $professor" else "Due: $time"
+                if (professor.isNotEmpty() && professor != "null") "Due: $timeDisplay • $professor" else "Due: $timeDisplay"
             } else {
-                if (showProfessorNames && professor.isNotEmpty() && professor != "null") "$time • $professor" else time
+                if (showProfessorNames && professor.isNotEmpty() && professor != "null") "$timeDisplay • $professor" else timeDisplay
             }
             views.setTextViewText(R.id.item_subtitle, subtitle)
 
@@ -70,7 +96,6 @@ class ListRemoteViewsFactory(private val context: Context) : RemoteViewsService.
             if (type == "task") {
                 views.setViewVisibility(R.id.task_checkbox_container, View.VISIBLE)
                 
-                // Intent to complete task
                 val completeFillIn = Intent().apply {
                     action = ClassWidgetProvider.ACTION_COMPLETE_TASK
                     putExtra(ClassWidgetProvider.EXTRA_TASK_ID, id)

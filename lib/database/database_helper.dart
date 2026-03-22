@@ -248,6 +248,18 @@ class DatabaseHelper {
     return await db.delete('events', where: 'id = ?', whereArgs: [id]);
   }
 
+  /// Returns events for a date range (inclusive), sorted by date then start_time.
+  Future<List<ScheduleEvent>> getEventsForDateRange(String startDate, String endDate) async {
+    Database db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'events',
+      where: 'date >= ? AND date <= ?',
+      whereArgs: [startDate, endDate],
+      orderBy: 'date ASC, start_time ASC',
+    );
+    return List.generate(maps.length, (i) => ScheduleEvent.fromMap(maps[i]));
+  }
+
   Future<List<ScheduleEvent>> _getSortedEventsByDate(String date) async {
     Database db = await database;
     final List<Map<String, dynamic>> maps = await db.query(

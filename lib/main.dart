@@ -12,7 +12,7 @@ import 'services/theme_controller.dart';
 void callbackDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
     LogService.log('Background task $taskName started', tag: 'WorkManager');
-    await WidgetDataService.syncTodaySchedule();
+    await WidgetDataService.syncSchedule();
     return Future.value(true);
   });
 }
@@ -21,7 +21,7 @@ void callbackDispatcher() {
 Future<void> backgroundCallback(Uri? uri) async {
   if (uri?.host == 'update') {
     LogService.log('HomeWidget background update triggered', tag: 'HomeWidget');
-    await WidgetDataService.syncTodaySchedule();
+    await WidgetDataService.syncSchedule();
   }
 }
 

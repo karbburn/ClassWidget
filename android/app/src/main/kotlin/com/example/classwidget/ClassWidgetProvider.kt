@@ -13,6 +13,9 @@ import es.antonborri.home_widget.HomeWidgetPlugin
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class ClassWidgetProvider : AppWidgetProvider() {
  
@@ -41,12 +44,11 @@ class ClassWidgetProvider : AppWidgetProvider() {
             "android.intent.action.TIME_SET",
             "android.intent.action.TIMEZONE_CHANGED",
             "android.intent.action.TIME_CHANGED" -> {
-                // System date/time changed (likely midnight transition or manual change)
                 val appWidgetManager = AppWidgetManager.getInstance(context)
                 val thisWidget = android.content.ComponentName(context, ClassWidgetProvider::class.java)
                 val appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
                 
-                // Trigger Flutter background sync
+                // Trigger Flutter background sync for fresh data
                 try {
                     HomeWidgetBackgroundIntent.getBroadcast(
                         context,
@@ -56,6 +58,8 @@ class ClassWidgetProvider : AppWidgetProvider() {
                     e.printStackTrace()
                 }
                 
+                // Also force the list view to re-read data (it will filter by new system date)
+                appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list_view)
                 onUpdate(context, appWidgetManager, appWidgetIds)
             }
         }
@@ -71,7 +75,7 @@ class ClassWidgetProvider : AppWidgetProvider() {
 
             // Update JSON Cache in SharedPreferences so the list UI updates immediately
             val widgetData = HomeWidgetPlugin.getData(context)
-            val jsonString = widgetData.getString("today_schedule", null)
+            val jsonString = widgetData.getString("schedule_data", null)
             if (jsonString != null) {
                 val jsonObject = JSONObject(jsonString)
                 val events = jsonObject.optJSONArray("events")
@@ -79,32 +83,25 @@ class ClassWidgetProvider : AppWidgetProvider() {
                     val newEvents = JSONArray()
                     for (i in 0 until events.length()) {
                         val event = events.getJSONObject(i)
-                        // In the widget, we usually hide completed tasks.
-                        // So if this is the task we just completed, we don't add it to newEvents
                         if (event.optInt("id") != taskId) {
                             newEvents.put(event)
                         }
                     }
                     jsonObject.put("events", newEvents)
-                    jsonObject.put("isEmpty", newEvents.length() == 0)
                     
                     val editor = widgetData.edit()
-                    editor.putString("today_schedule", jsonObject.toString())
+                    editor.putString("schedule_data", jsonObject.toString())
                     editor.apply()
                 }
             }
 
             Toast.makeText(context, "Task marked as completed!", Toast.LENGTH_SHORT).show()
 
-            // Trigger manual update
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val thisWidget = android.content.ComponentName(context, ClassWidgetProvider::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
             
-            // Notify the list view specifically to refresh first
             appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list_view)
-            
-            // Then do a full update
             onUpdate(context, appWidgetManager, appWidgetIds)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -140,19 +137,59 @@ class ClassWidgetProvider : AppWidgetProvider() {
         options: Bundle
     ) {
         val widgetData = HomeWidgetPlugin.getData(context)
-        val jsonString = widgetData.getString("today_schedule", "{}")
+        val jsonString = widgetData.getString("schedule_data", "{}")
         
-        var dayName = "Today"
-        var isEmpty = true
-        var nextTitle = ""
-        var minutesUntilNext = -1
+        // Always derive "today" from system clock
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val currentDayName = SimpleDateFormat("EEEE", Locale.getDefault()).format(Date())
+        val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+
+        // Filter events for today
+        var todayEvents = JSONArray()
+        var showProfessorNames = true
 
         try {
             val jsonObject = JSONObject(jsonString)
-            dayName = jsonObject.optString("dayName", "Today")
-            isEmpty = jsonObject.optBoolean("isEmpty", true)
-            nextTitle = jsonObject.optString("nextTitle", "")
-            minutesUntilNext = jsonObject.optInt("minutesUntilNext", -1)
+            showProfessorNames = jsonObject.optBoolean("showProfessorNames", true)
+            val allEvents = jsonObject.optJSONArray("events") ?: JSONArray()
+            
+            for (i in 0 until allEvents.length()) {
+                val event = allEvents.getJSONObject(i)
+                val eventDate = event.optString("date", "")
+                if (eventDate == todayStr) {
+                    // For classes, always include. For tasks, only incomplete.
+                    val type = event.optString("type", "class")
+                    val completed = event.optBoolean("completed", false)
+                    if (type == "class" || !completed) {
+                        todayEvents.put(event)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        val isEmpty = todayEvents.length() == 0
+
+        // Find next upcoming class using system time
+        var nextTitle = ""
+        var minutesUntilNext = -1
+        try {
+            val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val nowParsed = timeFormat.parse(currentTime)
+            
+            for (i in 0 until todayEvents.length()) {
+                val event = todayEvents.getJSONObject(i)
+                val startTime = event.optString("startTime", "")
+                if (startTime.isNotEmpty() && startTime > currentTime) {
+                    val nextParsed = timeFormat.parse(startTime)
+                    if (nowParsed != null && nextParsed != null) {
+                        minutesUntilNext = ((nextParsed.time - nowParsed.time) / 60000).toInt()
+                        nextTitle = event.optString("title", "")
+                    }
+                    break
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -162,19 +199,14 @@ class ClassWidgetProvider : AppWidgetProvider() {
         val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)
 
         val layoutId = when {
-            minWidth < 150 || minHeight < 110 -> R.layout.widget_layout_small // 2x1 or 1x1
-            minWidth > 250 && minHeight > 250 -> R.layout.widget_layout_large // 4x4+
-            else -> R.layout.widget_layout // Default medium
+            minWidth < 150 || minHeight < 110 -> R.layout.widget_layout_small
+            minWidth > 250 && minHeight > 250 -> R.layout.widget_layout_large
+            else -> R.layout.widget_layout
         }
 
         val views = RemoteViews(context.packageName, layoutId)
         
-        // Logical check: Is the cached data from today?
-        val currentDayName = java.text.SimpleDateFormat("EEEE", java.util.Locale.getDefault()).format(java.util.Date())
-        val isStale = dayName != "Today" && !dayName.equals(currentDayName, ignoreCase = true)
-
-        val widgetTitle = if (isStale) "Schedule Outdated" else "ClassWidget · $dayName"
-        views.setTextViewText(R.id.widget_title, widgetTitle)
+        views.setTextViewText(R.id.widget_title, "ClassWidget · $currentDayName")
 
         if (isEmpty) {
             views.setViewVisibility(R.id.empty_view, android.view.View.VISIBLE)
@@ -205,8 +237,6 @@ class ClassWidgetProvider : AppWidgetProvider() {
             views.setRemoteAdapter(R.id.widget_list_view, intent)
             views.setEmptyView(R.id.widget_list_view, R.id.empty_view)
 
-            // Set up PendingIntent template for actions
-            // We use a generic intent and change the ACTION in fillInIntent
             val baseIntent = Intent(context, ClassWidgetProvider::class.java)
             val basePendingIntent = PendingIntent.getBroadcast(
                 context, 0, baseIntent, 

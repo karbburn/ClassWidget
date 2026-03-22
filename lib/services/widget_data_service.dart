@@ -18,75 +18,54 @@ class WidgetDataService {
     if (immediate) {
       _debounceTimer?.cancel();
       LogService.log('Immediate widget refresh triggered.', tag: 'WidgetDataService');
-      await syncTodaySchedule();
+      await syncSchedule();
       return;
     }
 
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 500), () async {
       LogService.log('Debounced widget refresh executing...', tag: 'WidgetDataService');
-      await syncTodaySchedule();
+      await syncSchedule();
     });
   }
 
-  /// Syncs today's schedule to the Home Widget with minimal payload
-  static Future<void> syncTodaySchedule() async {
+  /// Syncs a rolling 7-day window of events to the Home Widget.
+  /// The Kotlin side dynamically filters for "today" using system time,
+  /// which ensures correct display even after midnight without app wake-up.
+  static Future<void> syncSchedule() async {
     try {
       final dbHelper = DatabaseHelper();
-      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      final currentTime = DateFormat('HH:mm').format(DateTime.now());
-      
-      final List<ScheduleEvent> allEvents = await dbHelper.getEventsForDate(today);
+      final now = DateTime.now();
+      final today = DateFormat('yyyy-MM-dd').format(now);
+      final endDate = DateFormat('yyyy-MM-dd').format(now.add(const Duration(days: 6)));
+
+      // Fetch all events for 7 days
+      final List<ScheduleEvent> allEvents = await dbHelper.getEventsForDateRange(today, endDate);
       
       // Filter: All classes + only incomplete tasks
       final displayEvents = allEvents.where((e) => e.type == 'class' || !e.completed).toList();
-      
-      // Sort: Chronological, untimed at bottom
-      displayEvents.sort((a, b) {
-        if (a.startTime.isEmpty && b.startTime.isNotEmpty) return 1;
-        if (a.startTime.isNotEmpty && b.startTime.isEmpty) return -1;
-        return a.startTime.compareTo(b.startTime);
-      });
 
       final List<Map<String, dynamic>> eventMaps = displayEvents.map((e) {
-        bool isCurrent = false;
-        if (e.type == 'class' && e.startTime.isNotEmpty && e.endTime.isNotEmpty) {
-           isCurrent = currentTime.compareTo(e.startTime) >= 0 && 
-                       currentTime.compareTo(e.endTime) <= 0;
-        }
-                             
         return {
           'id': e.id,
           'title': e.title,
-          'time': e.startTime.isEmpty ? 'All Day' : '${e.startTime} - ${e.endTime}',
+          'startTime': e.startTime,
+          'endTime': e.endTime,
           'professor': e.professor,
-          'isCurrent': isCurrent,
           'type': e.type,
           'completed': e.completed,
+          'date': e.date,
         };
       }).toList();
 
       final Map<String, dynamic> payload = {
         'events': eventMaps,
-        'isEmpty': displayEvents.isEmpty,
-        'dayName': DateFormat('EEEE').format(DateTime.now()),
         'showProfessorNames': await PreferencesService.getShowProfessorNames(),
       };
 
-      // Feature #18: Add Next Class Countdown if applicable
-      final nextEvent = await dbHelper.getNextEvent(today, currentTime);
-      if (nextEvent != null) {
-        payload['nextTitle'] = nextEvent.title;
-        payload['nextTime'] = nextEvent.startTime;
-        
-        final nextStart = DateFormat('HH:mm').parse(nextEvent.startTime);
-        final now = DateFormat('HH:mm').parse(currentTime);
-        payload['minutesUntilNext'] = nextStart.difference(now).inMinutes;
-      }
-
       final String jsonData = jsonEncode(payload);
 
-      await HomeWidget.saveWidgetData<String>('today_schedule', jsonData);
+      await HomeWidget.saveWidgetData<String>('schedule_data', jsonData);
       
       await HomeWidget.updateWidget(
         name: androidWidgetName,
