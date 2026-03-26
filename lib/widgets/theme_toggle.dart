@@ -10,18 +10,18 @@ class ThemeToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Container(
       height: 36,
       width: 72, // Fixed width for consistent segmented feel (36 * 2)
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: isDark 
-            ? const Color(0xFF1E293B).withOpacity(0.5) 
-            : const Color(0xFF94A3B8).withOpacity(0.1),
+        color: isDark
+            ? const Color(0xFF1E293B).withValues(alpha: 0.5)
+            : const Color(0xFF94A3B8).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.1),
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
         ),
       ),
       child: Stack(
@@ -35,11 +35,12 @@ class ThemeToggle extends StatelessWidget {
               widthFactor: 1 / 2,
               child: Container(
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary, // Using theme Primary (Gold) instead of hardcoded blue
+                  color: theme.colorScheme
+                      .primary, // Using theme Primary (Gold) instead of hardcoded blue
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: theme.colorScheme.primary.withOpacity(0.3),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -63,7 +64,6 @@ class ThemeToggle extends StatelessWidget {
   Widget _buildOption(BuildContext context, ThemeMode mode, IconData icon) {
     final isSelected = controller.themeMode == mode;
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Expanded(
       child: GestureDetector(
@@ -74,8 +74,10 @@ class ThemeToggle extends StatelessWidget {
             icon,
             size: 16,
             color: isSelected
-                ? theme.colorScheme.onPrimary // Black/Dark icon on the Gold background
-                : theme.colorScheme.onSurface.withOpacity(0.5), // Muted for unselected
+                ? theme.colorScheme
+                    .onPrimary // Black/Dark icon on the Gold background
+                : theme.colorScheme.onSurface
+                    .withValues(alpha: 0.5), // Muted for unselected
           ),
         ),
       ),

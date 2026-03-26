@@ -1,19 +1,26 @@
 package com.example.classwidget
 
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import android.widget.RemoteViews
 import android.widget.Toast
+import com.example.classwidget.R
 import es.antonborri.home_widget.HomeWidgetPlugin
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -22,10 +29,13 @@ class ClassWidgetProvider : AppWidgetProvider() {
     companion object {
         const val ACTION_COMPLETE_TASK = "com.example.classwidget.ACTION_COMPLETE_TASK"
         const val ACTION_OPEN_APP = "com.example.classwidget.ACTION_OPEN_APP"
+        const val ACTION_MIDNIGHT_REFRESH = "com.example.classwidget.ACTION_MIDNIGHT_REFRESH"
+        const val ACTION_MINUTE_TICK = "com.example.classwidget.ACTION_MINUTE_TICK"
         const val EXTRA_TASK_ID = "extra_task_id"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        Log.d("ClassWidget", "onReceive: ${intent.action}")
         when (intent.action) {
             ACTION_COMPLETE_TASK -> {
                 val taskId = intent.getIntExtra(EXTRA_TASK_ID, -1)
@@ -40,62 +50,101 @@ class ClassWidgetProvider : AppWidgetProvider() {
                     context.startActivity(launchIntent)
                 }
             }
-            "android.intent.action.DATE_CHANGED",
-            "android.intent.action.TIME_SET",
-            "android.intent.action.TIMEZONE_CHANGED",
-            "android.intent.action.TIME_CHANGED" -> {
+            ACTION_MIDNIGHT_REFRESH,
+            ACTION_MINUTE_TICK,
+            "com.example.classwidget.ACTION_BOOT",
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_DATE_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED -> {
                 val appWidgetManager = AppWidgetManager.getInstance(context)
                 val thisWidget = android.content.ComponentName(context, ClassWidgetProvider::class.java)
                 val appWidgetIds = appWidgetManager.getAppWidgetIds(thisWidget)
                 
-                // Trigger Flutter background sync for fresh data
+                // Reschedule alarms to ensure they keep firing
+                scheduleMidnightAlarm(context)
+                scheduleMinuteTickAlarm(context)
+
+                // Trigger Flutter background sync for fresh data if needed
                 try {
                     HomeWidgetBackgroundIntent.getBroadcast(
                         context,
                         Uri.parse("homeWidget://update")
                     ).send()
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    Log.e("ClassWidget", "Background sync trigger failed", e)
                 }
                 
-                // Also force the list view to re-read data (it will filter by new system date)
+                // Force the ListView to re-read and re-filter data by new system date
                 appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list_view)
-                onUpdate(context, appWidgetManager, appWidgetIds)
+                for (appWidgetId in appWidgetIds) {
+                    val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
+                    updateAppWidget(context, appWidgetManager, appWidgetId, options)
+                }
             }
         }
         super.onReceive(context, intent)
     }
 
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        // Schedule alarms when user first adds a widget
+        scheduleMidnightAlarm(context)
+        scheduleMinuteTickAlarm(context)
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        // Cancel all alarms when the last widget is removed
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        
+        val midnightIntent = PendingIntent.getBroadcast(
+            context, 9999,
+            Intent(context, ClassWidgetProvider::class.java).apply { action = ACTION_MIDNIGHT_REFRESH },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(midnightIntent)
+
+        val minuteIntent = PendingIntent.getBroadcast(
+            context, 9998,
+            Intent(context, ClassWidgetProvider::class.java).apply { action = ACTION_MINUTE_TICK },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(minuteIntent)
+    }
+
     private fun updateTaskCompletion(context: Context, taskId: Int) {
+        var db: android.database.sqlite.SQLiteDatabase? = null
         try {
             val dbPath = context.getDatabasePath("class_widget_v2.db").absolutePath
-            val db = android.database.sqlite.SQLiteDatabase.openDatabase(dbPath, null, android.database.sqlite.SQLiteDatabase.OPEN_READWRITE)
-            db.execSQL("UPDATE events SET completed = 1 WHERE id = ?", arrayOf(taskId))
-            db.close()
+            db = android.database.sqlite.SQLiteDatabase.openDatabase(dbPath, null, android.database.sqlite.SQLiteDatabase.OPEN_READWRITE)
+            val values = ContentValues().apply { put("completed", 1) }
+            db.update("events", values, "id = ?", arrayOf(taskId.toString()))
 
             // Update JSON Cache in SharedPreferences so the list UI updates immediately
             val widgetData = HomeWidgetPlugin.getData(context)
-            val jsonString = widgetData.getString("schedule_data", null)
+            val jsonString = widgetData.getString(AppConstants.KEY_SCHEDULE_DATA, null)
             if (jsonString != null) {
                 val jsonObject = JSONObject(jsonString)
-                val events = jsonObject.optJSONArray("events")
+                val events = jsonObject.optJSONArray(AppConstants.KEY_EVENTS)
                 if (events != null) {
                     val newEvents = JSONArray()
                     for (i in 0 until events.length()) {
                         val event = events.getJSONObject(i)
-                        if (event.optInt("id") != taskId) {
+                        if (event.optInt(AppConstants.KEY_ID) != taskId) {
                             newEvents.put(event)
                         }
                     }
-                    jsonObject.put("events", newEvents)
+                    jsonObject.put(AppConstants.KEY_EVENTS, newEvents)
                     
                     val editor = widgetData.edit()
-                    editor.putString("schedule_data", jsonObject.toString())
+                    editor.putString(AppConstants.KEY_SCHEDULE_DATA, jsonObject.toString())
                     editor.apply()
                 }
             }
 
-            Toast.makeText(context, "Task marked as completed!", Toast.LENGTH_SHORT).show()
+            Handler(Looper.getMainLooper()).post {
+                Toast.makeText(context, "Task marked as completed!", Toast.LENGTH_SHORT).show()
+            }
 
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val thisWidget = android.content.ComponentName(context, ClassWidgetProvider::class.java)
@@ -105,6 +154,8 @@ class ClassWidgetProvider : AppWidgetProvider() {
             onUpdate(context, appWidgetManager, appWidgetIds)
         } catch (e: Exception) {
             e.printStackTrace()
+        } finally {
+            db?.close()
         }
     }
 
@@ -118,6 +169,13 @@ class ClassWidgetProvider : AppWidgetProvider() {
             val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
             updateAppWidget(context, appWidgetManager, appWidgetId, options)
         }
+        // CRITICAL: Force ListView to re-read data on EVERY update cycle.
+        // Without this, the RemoteViewsFactory uses stale cached data.
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list_view)
+
+        // Ensure alarms are always scheduled
+        scheduleMidnightAlarm(context)
+        scheduleMinuteTickAlarm(context)
     }
 
     override fun onAppWidgetOptionsChanged(
@@ -136,8 +194,9 @@ class ClassWidgetProvider : AppWidgetProvider() {
         appWidgetId: Int,
         options: Bundle
     ) {
+        Log.d("ClassWidget", "updateAppWidget: id=$appWidgetId")
         val widgetData = HomeWidgetPlugin.getData(context)
-        val jsonString = widgetData.getString("schedule_data", "{}")
+        val jsonString = widgetData.getString(AppConstants.KEY_SCHEDULE_DATA, "{}")
         
         // Always derive "today" from system clock
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -150,16 +209,15 @@ class ClassWidgetProvider : AppWidgetProvider() {
 
         try {
             val jsonObject = JSONObject(jsonString)
-            showProfessorNames = jsonObject.optBoolean("showProfessorNames", true)
-            val allEvents = jsonObject.optJSONArray("events") ?: JSONArray()
+            showProfessorNames = jsonObject.optBoolean(AppConstants.KEY_SHOW_PROFESSOR_NAMES, true)
+            val allEvents = jsonObject.optJSONArray(AppConstants.KEY_EVENTS) ?: JSONArray()
             
             for (i in 0 until allEvents.length()) {
                 val event = allEvents.getJSONObject(i)
-                val eventDate = event.optString("date", "")
+                val eventDate = event.optString(AppConstants.KEY_DATE, "")
                 if (eventDate == todayStr) {
-                    // For classes, always include. For tasks, only incomplete.
-                    val type = event.optString("type", "class")
-                    val completed = event.optBoolean("completed", false)
+                    val type = event.optString(AppConstants.KEY_TYPE, "class")
+                    val completed = event.optBoolean(AppConstants.KEY_COMPLETED, false)
                     if (type == "class" || !completed) {
                         todayEvents.put(event)
                     }
@@ -180,14 +238,14 @@ class ClassWidgetProvider : AppWidgetProvider() {
             
             for (i in 0 until todayEvents.length()) {
                 val event = todayEvents.getJSONObject(i)
-                val startTime = event.optString("startTime", "")
-                if (startTime.isNotEmpty() && startTime > currentTime) {
+                val startTime = event.optString(AppConstants.KEY_START_TIME, "")
+                if (startTime.isNotEmpty()) {
                     val nextParsed = timeFormat.parse(startTime)
-                    if (nowParsed != null && nextParsed != null) {
+                    if (nowParsed != null && nextParsed != null && nextParsed.after(nowParsed)) {
                         minutesUntilNext = ((nextParsed.time - nowParsed.time) / 60000).toInt()
-                        nextTitle = event.optString("title", "")
+                        nextTitle = event.optString(AppConstants.KEY_TITLE, "")
+                        break
                     }
-                    break
                 }
             }
         } catch (e: Exception) {
@@ -239,8 +297,8 @@ class ClassWidgetProvider : AppWidgetProvider() {
 
             val baseIntent = Intent(context, ClassWidgetProvider::class.java)
             val basePendingIntent = PendingIntent.getBroadcast(
-                context, 0, baseIntent, 
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                context, 1000 + appWidgetId, baseIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             views.setPendingIntentTemplate(R.id.widget_list_view, basePendingIntent)
         }
@@ -255,5 +313,70 @@ class ClassWidgetProvider : AppWidgetProvider() {
         views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
 
         appWidgetManager.updateAppWidget(appWidgetId, views)
+    }
+
+    /**
+     * Schedules an AlarmManager alarm at 00:00:01 the next day.
+     * This guarantees the widget refreshes at midnight even if
+     * DATE_CHANGED broadcast is suppressed by Doze mode.
+     */
+    private fun scheduleMidnightAlarm(context: Context) {
+        Log.d("ClassWidget", "scheduleMidnightAlarm: scheduling for next midnight")
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        val intent = Intent(context, ClassWidgetProvider::class.java).apply {
+            action = ACTION_MIDNIGHT_REFRESH
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            9999, // Unique request code for midnight alarm
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Calculate next midnight + 1 second
+        val midnight = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 1)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        alarmManager.setAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            midnight.timeInMillis,
+            pendingIntent
+        )
+    }
+
+    /**
+     * Schedules a repeating alarm that fires every ~60 seconds.
+     * This keeps the "Next class in ___" countdown fresh.
+     * Uses setAndAllowWhileIdle which Android may throttle during Doze
+     * (every ~9 min), but will update reliably when the screen is on.
+     */
+    private fun scheduleMinuteTickAlarm(context: Context) {
+        Log.d("ClassWidget", "scheduleMinuteTickAlarm: scheduling next tick")
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        val intent = Intent(context, ClassWidgetProvider::class.java).apply {
+            action = ACTION_MINUTE_TICK
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            9998, // Unique request code for minute tick
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Fire 60 seconds from now
+        val nextTick = System.currentTimeMillis() + 60_000L
+
+        alarmManager.setAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            nextTick,
+            pendingIntent
+        )
     }
 }

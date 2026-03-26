@@ -1,6 +1,6 @@
 name: classwidget
 description: A student scheduling app with an Android home screen widget.
-version: 1.1.0+1
+version: 3.0.0+3
 publish_to: 'none'
 
 environment:

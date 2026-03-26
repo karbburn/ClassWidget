@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/schedule_event.dart';
 import '../services/schedule_import.dart';
 import '../services/preferences_service.dart';
 import '../services/widget_data_service.dart';
-import '../services/log_service.dart';
 import 'import_preview_screen.dart';
 
 class ImportScreen extends StatefulWidget {
@@ -47,23 +45,27 @@ class _ImportScreenState extends State<ImportScreen> {
               onConfirm: (filteredEvents, showInstructors, sectionLabel) async {
                 Navigator.pop(context); // Close preview
                 setState(() => _isLoading = true);
-                
-                final result = await scheduleImport.commitImport(filteredEvents);
-                
+
+                final result =
+                    await scheduleImport.commitImport(filteredEvents);
+
                 if (result.success) {
                   if (sectionLabel.isNotEmpty) {
                     await PreferencesService.setSelectedSection(sectionLabel);
                   }
-                  await PreferencesService.setShowProfessorNames(showInstructors);
+                  await PreferencesService.setShowProfessorNames(
+                      showInstructors);
                 }
 
                 setState(() => _isLoading = false);
-                if (result.success && mounted) {
+                if (result.success && context.mounted) {
                   _showSuccessDialog(result, sectionLabel);
                   await WidgetDataService.refreshWidget(immediate: true);
-                } else if (mounted) {
+                } else if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(result.message), backgroundColor: Colors.red),
+                    SnackBar(
+                        content: Text(result.message),
+                        backgroundColor: Colors.red),
                   );
                 }
               },
@@ -75,7 +77,9 @@ class _ImportScreenState extends State<ImportScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to parse file: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Failed to parse file: $e'),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -90,10 +94,10 @@ class _ImportScreenState extends State<ImportScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('✅ Classes Added: ${result.classesAdded}'),
+            Text('Classes Added: ${result.classesAdded}'),
             if (userSection != null && userSection.isNotEmpty)
               Text('📍 Section Assigned: $userSection')
-            else if (result.section != null) 
+            else if (result.section != null)
               Text('📍 Section Detected: ${result.section}'),
             const SizedBox(height: 12),
             const Text('Your home screen widget has been updated.'),
@@ -112,7 +116,7 @@ class _ImportScreenState extends State<ImportScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(title: const Text('Import Schedule')),
       body: SafeArea(
@@ -133,11 +137,12 @@ class _ImportScreenState extends State<ImportScreen> {
                 'Upload your timetable in Excel or CSV format.',
                 style: TextStyle(
                   fontSize: 16,
-                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                  color:
+                      theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(height: 32),
-              
+
               // Upload Zone
               Expanded(
                 child: Material(
@@ -150,7 +155,8 @@ class _ImportScreenState extends State<ImportScreen> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: theme.colorScheme.primary.withOpacity(0.5),
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.5),
                           width: 2,
                           style: BorderStyle.solid,
                         ),
@@ -177,7 +183,8 @@ class _ImportScreenState extends State<ImportScreen> {
                                   Container(
                                     padding: const EdgeInsets.all(20),
                                     decoration: BoxDecoration(
-                                      color: theme.colorScheme.primary.withOpacity(0.1),
+                                      color: theme.colorScheme.primary
+                                          .withValues(alpha: 0.1),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
@@ -200,7 +207,8 @@ class _ImportScreenState extends State<ImportScreen> {
                                     'Supports .xlsx and .csv',
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                                      color: theme.textTheme.bodyMedium?.color
+                                          ?.withValues(alpha: 0.6),
                                     ),
                                   ),
                                 ],
@@ -211,45 +219,141 @@ class _ImportScreenState extends State<ImportScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               if (!_isLoading)
                 OutlinedButton.icon(
                   onPressed: () async {
-                     final confirm = await showDialog<bool>(
-                       context: context,
-                       builder: (context) => AlertDialog(
-                         title: const Text('Clear Schedule?'),
-                         content: const Text('This will delete all imported classes. Manually added tasks and events will be saved.'),
-                         actions: [
-                           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
-                           TextButton(
-                             onPressed: () => Navigator.pop(context, true), 
-                             child: const Text('CLEAR ALL', style: TextStyle(color: Colors.redAccent))
-                           ),
-                         ],
-                       ),
-                     );
-                     if (confirm == true) {
-                       await scheduleImport.dbHelper.deleteImportedEvents();
-                       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Imported schedule cleared!')));
-                       await WidgetDataService.refreshWidget(immediate: true);
-                     }
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Clear Schedule?'),
+                        content: const Text(
+                            'This will delete all imported classes. Manually added tasks and events will be saved.'),
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('CANCEL')),
+                          TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('CLEAR ALL',
+                                  style: TextStyle(color: Colors.redAccent))),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      await scheduleImport.dbHelper.deleteImportedEvents();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Imported schedule cleared!')));
+                      }
+                      await WidgetDataService.refreshWidget(immediate: true);
+                    }
                   },
-                  icon: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent),
-                  label: const Text('CLEAR IMPORTED DATA', style: TextStyle(color: Colors.redAccent)),
+                  icon: const Icon(Icons.delete_sweep_outlined,
+                      color: Colors.amber),
+                  label: const Text('CLEAR IMPORTED DATA',
+                      style: TextStyle(color: Colors.amber)),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(color: Colors.redAccent.withOpacity(0.5)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side:
+                        BorderSide(color: Colors.amber.withValues(alpha: 0.5)),
                   ),
                 ),
+              const SizedBox(height: 24),
+              const Divider(),
               const SizedBox(height: 16),
               Text(
-                'Note: Importing a new file replaces previously imported schedules. Manually added events will remain untouched.',
-                style: TextStyle(
-                  fontSize: 12, 
-                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5), 
-                  fontStyle: FontStyle.italic
+                'ADVANCED SETTINGS',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
+              ),
+              const SizedBox(height: 16),
+              // Morning Cutoff Setting
+              FutureBuilder<int>(
+                  future: PreferencesService.getMorningCutoff(),
+                  builder: (context, snapshot) {
+                    final currentVal = snapshot.data ?? 8;
+                    return Row(
+                      children: [
+                        const Icon(Icons.wb_sunny_outlined, size: 20),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Morning Cutoff',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold)),
+                              Text('Times before this hour are treated as PM',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                        DropdownButton<int>(
+                          value: currentVal,
+                          items: List.generate(6, (index) => index + 7)
+                              .map((h) => DropdownMenuItem(
+                                  value: h, child: Text('$h:00')))
+                              .toList(),
+                          onChanged: (val) async {
+                            if (val != null) {
+                              await PreferencesService.setMorningCutoff(val);
+                              setState(() {}); // Refresh UI
+                            }
+                          },
+                        ),
+                      ],
+                    );
+                  }),
+              const SizedBox(height: 16),
+              // Hard Reset
+              TextButton.icon(
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('💥 Hard Reset?'),
+                      content: const Text(
+                          'This will delete EVERYTHING: all classes, all tasks, and all notes. This cannot be undone.'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('CANCEL')),
+                        TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('RESET EVERYTHING',
+                                style: TextStyle(color: Colors.red))),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    await scheduleImport.dbHelper.clearAllData();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('App data reset successfully!'),
+                          backgroundColor: Colors.red));
+                    }
+                    await WidgetDataService.refreshWidget(immediate: true);
+                  }
+                },
+                icon: const Icon(Icons.warning_amber_rounded,
+                    color: Colors.red, size: 18),
+                label: const Text('PERFORM HARD RESET',
+                    style: TextStyle(color: Colors.red, fontSize: 13)),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Note: Use Hard Reset only if your database becomes inconsistent or you want to start completely fresh.',
+                style: TextStyle(
+                    fontSize: 11,
+                    color: theme.textTheme.bodyMedium?.color
+                        ?.withValues(alpha: 0.4),
+                    fontStyle: FontStyle.italic),
                 textAlign: TextAlign.center,
               ),
             ],

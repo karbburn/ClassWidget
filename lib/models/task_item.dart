@@ -15,7 +15,6 @@ class TaskItem {
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'title': title,
       'due_date': dueDate,
       'related_course': relatedCourse,

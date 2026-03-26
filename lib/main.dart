@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:home_widget/home_widget.dart';
 import 'package:workmanager/workmanager.dart';
+import 'package:home_widget/home_widget.dart';
+import 'utils/constants.dart';
 import 'services/widget_data_service.dart';
 import 'services/log_service.dart';
 import 'ui/root_screen.dart';
@@ -27,19 +28,18 @@ Future<void> backgroundCallback(Uri? uri) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   final themeController = ThemeController();
-  
+
   await Workmanager().initialize(
     callbackDispatcher,
-    isInDebugMode: false, // Set to false for release
   );
 
-  await HomeWidget.registerBackgroundCallback(backgroundCallback);
+  await HomeWidget.registerInteractivityCallback(backgroundCallback);
 
-  // Register periodic task for every 3 hours (more frequent than midnight to stay updated)
+  // Register periodic task for every 3 hours
   await Workmanager().registerPeriodicTask(
-    "1", 
+    AppConstants.androidWidgetName,
     "widget_periodic_refresh",
     frequency: const Duration(hours: 3),
     initialDelay: const Duration(minutes: 5),
@@ -116,7 +116,8 @@ class ClassWidgetApp extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFD4AF37), width: 2),
+                borderSide:
+                    const BorderSide(color: Color(0xFFD4AF37), width: 2),
               ),
               labelStyle: const TextStyle(color: Color(0xFF6B6B6B)),
             ),
@@ -124,9 +125,11 @@ class ClassWidgetApp extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD4AF37),
                 foregroundColor: const Color(0xFF0D0D0D),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 textStyle: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
@@ -185,7 +188,8 @@ class ClassWidgetApp extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: Color(0xFFD4AF37), width: 2),
+                borderSide:
+                    const BorderSide(color: Color(0xFFD4AF37), width: 2),
               ),
               labelStyle: const TextStyle(color: Color(0xFF8A8A8A)),
             ),
@@ -193,9 +197,11 @@ class ClassWidgetApp extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD4AF37),
                 foregroundColor: const Color(0xFF0D0D0D),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 textStyle: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),

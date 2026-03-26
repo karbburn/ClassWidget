@@ -47,7 +47,8 @@ class _TasksScreenState extends State<TasksScreen> {
   void _showTaskDialog([TaskItem? task]) {
     final titleController = TextEditingController(text: task?.title);
     final courseController = TextEditingController(text: task?.relatedCourse);
-    DateTime? selectedDate = task?.dueDate != null ? DateTime.parse(task!.dueDate!) : null;
+    DateTime? selectedDate =
+        task?.dueDate != null ? DateTime.parse(task!.dueDate!) : null;
 
     showModalBottomSheet(
       context: context,
@@ -58,16 +59,16 @@ class _TasksScreenState extends State<TasksScreen> {
           final theme = Theme.of(context);
           return Container(
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, -5),
-                )
-              ]
-            ),
+                color: theme.colorScheme.surface,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, -5),
+                  )
+                ]),
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(context).viewInsets.bottom + 24,
               top: 12,
@@ -85,14 +86,16 @@ class _TasksScreenState extends State<TasksScreen> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 24),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                      color: theme.colorScheme.outlineVariant
+                          .withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
                 Text(
                   task == null ? 'New Task' : 'Edit Task',
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 24),
                 TextField(
@@ -118,16 +121,19 @@ class _TasksScreenState extends State<TasksScreen> {
                     final picked = await showDatePicker(
                       context: context,
                       initialDate: selectedDate ?? DateTime.now(),
-                      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                      firstDate:
+                          DateTime.now().subtract(const Duration(days: 365)),
                       lastDate: DateTime.now().add(const Duration(days: 365)),
                       builder: (context, child) {
                         return Theme(
                           data: Theme.of(context).copyWith(
                             colorScheme: ColorScheme.light(
-                              primary: theme.colorScheme.primary, // Selection color
+                              primary:
+                                  theme.colorScheme.primary, // Selection color
                               onPrimary: theme.colorScheme.onPrimary,
                               surface: theme.colorScheme.surface,
-                              onSurface: theme.textTheme.bodyLarge?.color ?? Colors.black,
+                              onSurface: theme.textTheme.bodyLarge?.color ??
+                                  Colors.black,
                             ),
                           ),
                           child: child!,
@@ -140,29 +146,38 @@ class _TasksScreenState extends State<TasksScreen> {
                   },
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 16),
                     decoration: BoxDecoration(
                       color: theme.inputDecorationTheme.fillColor,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.5)),
+                      border: Border.all(
+                          color: theme.colorScheme.outlineVariant
+                              .withValues(alpha: 0.5)),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.calendar_today, color: theme.inputDecorationTheme.labelStyle?.color),
+                        Icon(Icons.calendar_today,
+                            color:
+                                theme.inputDecorationTheme.labelStyle?.color),
                         const SizedBox(width: 12),
                         Text(
-                          selectedDate == null 
-                            ? 'Set Due Date' 
-                            : 'Due: ${DateFormat('MMM d, yyyy').format(selectedDate!)}',
+                          selectedDate == null
+                              ? 'Set Due Date'
+                              : 'Due: ${DateFormat('MMM d, yyyy').format(selectedDate!)}',
                           style: TextStyle(
-                            color: selectedDate == null 
-                                ? theme.inputDecorationTheme.labelStyle?.color 
+                            color: selectedDate == null
+                                ? theme.inputDecorationTheme.labelStyle?.color
                                 : theme.textTheme.bodyLarge?.color,
-                            fontWeight: selectedDate == null ? FontWeight.normal : FontWeight.w500,
+                            fontWeight: selectedDate == null
+                                ? FontWeight.normal
+                                : FontWeight.w500,
                           ),
                         ),
                         const Spacer(),
-                        Icon(Icons.edit_calendar, color: theme.inputDecorationTheme.labelStyle?.color, size: 20),
+                        Icon(Icons.edit_calendar,
+                            color: theme.inputDecorationTheme.labelStyle?.color,
+                            size: 20),
                       ],
                     ),
                   ),
@@ -175,8 +190,12 @@ class _TasksScreenState extends State<TasksScreen> {
                     final newTask = TaskItem(
                       id: task?.id,
                       title: titleController.text.trim(),
-                      relatedCourse: courseController.text.trim().isEmpty ? null : courseController.text.trim(),
-                      dueDate: selectedDate != null ? DateFormat('yyyy-MM-dd').format(selectedDate!) : null,
+                      relatedCourse: courseController.text.trim().isEmpty
+                          ? null
+                          : courseController.text.trim(),
+                      dueDate: selectedDate != null
+                          ? DateFormat('yyyy-MM-dd').format(selectedDate!)
+                          : null,
                       isCompleted: task?.isCompleted ?? false,
                     );
 
@@ -186,7 +205,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       await dbHelper.updateTask(newTask.toMap());
                     }
 
-                    if (mounted) Navigator.pop(context);
+                    if (context.mounted) Navigator.pop(context);
                     _loadTasks();
                     await WidgetDataService.refreshWidget(immediate: true);
                   },
@@ -215,14 +234,27 @@ class _TasksScreenState extends State<TasksScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _tasks.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _tasks.length,
-                  itemBuilder: (context, index) {
-                    final task = _tasks[index];
-                    return _buildTaskItem(task);
-                  },
+              ? RefreshIndicator(
+                  onRefresh: _loadTasks,
+                  child: LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: SizedBox(
+                              height: constraints.maxHeight,
+                              child: _buildEmptyState(),
+                            ),
+                          )),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadTasks,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _tasks.length,
+                    itemBuilder: (context, index) {
+                      final task = _tasks[index];
+                      return _buildTaskItem(task);
+                    },
+                  ),
                 ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showTaskDialog(),
@@ -243,19 +275,27 @@ class _TasksScreenState extends State<TasksScreen> {
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               shape: BoxShape.circle,
-              border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.2), width: 2),
+              border: Border.all(
+                  color:
+                      theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+                  width: 2),
             ),
-            child: Icon(Icons.assignment_turned_in_outlined, size: 64, color: theme.colorScheme.primary.withOpacity(0.5)),
+            child: Icon(Icons.assignment_turned_in_outlined,
+                size: 64,
+                color: theme.colorScheme.primary.withValues(alpha: 0.5)),
           ),
           const SizedBox(height: 24),
           Text(
             'All caught up! 🎉',
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'Add homework or reminders to stay organized.',
-            style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7)),
+            style: TextStyle(
+                color:
+                    theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7)),
           ),
         ],
       ),
@@ -263,19 +303,25 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   Color _getDueDateColor(DateTime date, ThemeData theme, bool isCompleted) {
-    if (isCompleted) return theme.textTheme.bodyMedium?.color?.withOpacity(0.5) ?? Colors.grey;
+    if (isCompleted) {
+      return theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5) ??
+          Colors.grey;
+    }
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final dueDate = DateTime(date.year, date.month, date.day);
 
     if (dueDate.isBefore(today)) return const Color(0xFFEF4444); // Red
-    if (dueDate.isAtSameMomentAs(today)) return theme.colorScheme.primary; // Gold
-    return theme.textTheme.bodyMedium?.color?.withOpacity(0.6) ?? Colors.grey;
+    if (dueDate.isAtSameMomentAs(today)) {
+      return theme.colorScheme.primary; // Gold
+    }
+    return theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6) ??
+        Colors.grey;
   }
 
   Widget _buildTaskItem(TaskItem task) {
     final theme = Theme.of(context);
-    
+
     return Dismissible(
       key: ValueKey(task.id),
       direction: DismissDirection.endToStart,
@@ -295,7 +341,8 @@ class _TasksScreenState extends State<TasksScreen> {
         color: theme.cardTheme.color,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: theme.colorScheme.outlineVariant.withOpacity(0.3)),
+          side: BorderSide(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3)),
         ),
         child: InkWell(
           onTap: () => _showTaskDialog(task),
@@ -313,13 +360,18 @@ class _TasksScreenState extends State<TasksScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: task.isCompleted ? theme.colorScheme.primary : theme.colorScheme.outlineVariant,
+                        color: task.isCompleted
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.outlineVariant,
                         width: task.isCompleted ? 0 : 2,
                       ),
-                      color: task.isCompleted ? theme.colorScheme.primary : Colors.transparent,
+                      color: task.isCompleted
+                          ? theme.colorScheme.primary
+                          : Colors.transparent,
                     ),
-                    child: task.isCompleted 
-                        ? Icon(Icons.check, size: 16, color: theme.colorScheme.onPrimary)
+                    child: task.isCompleted
+                        ? Icon(Icons.check,
+                            size: 16, color: theme.colorScheme.onPrimary)
                         : null,
                   ),
                 ),
@@ -332,9 +384,16 @@ class _TasksScreenState extends State<TasksScreen> {
                         task.title,
                         style: TextStyle(
                           fontSize: 16,
-                          fontWeight: task.isCompleted ? FontWeight.normal : FontWeight.w600,
-                          decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                          color: task.isCompleted ? theme.textTheme.bodyMedium?.color?.withOpacity(0.5) : null,
+                          fontWeight: task.isCompleted
+                              ? FontWeight.normal
+                              : FontWeight.w600,
+                          decoration: task.isCompleted
+                              ? TextDecoration.lineThrough
+                              : null,
+                          color: task.isCompleted
+                              ? theme.textTheme.bodyMedium?.color
+                                  ?.withValues(alpha: 0.5)
+                              : null,
                         ),
                       ),
                       if (task.relatedCourse != null || task.dueDate != null)
@@ -345,11 +404,18 @@ class _TasksScreenState extends State<TasksScreen> {
                               if (task.relatedCourse != null)
                                 Row(
                                   children: [
-                                    Icon(Icons.school, size: 14, color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5)),
+                                    Icon(Icons.school,
+                                        size: 14,
+                                        color: theme.textTheme.bodyMedium?.color
+                                            ?.withValues(alpha: 0.5)),
                                     const SizedBox(width: 4),
                                     Text(
-                                      task.relatedCourse!, 
-                                      style: TextStyle(fontSize: 13, color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7)),
+                                      task.relatedCourse!,
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: theme
+                                              .textTheme.bodyMedium?.color
+                                              ?.withValues(alpha: 0.7)),
                                     ),
                                     const SizedBox(width: 12),
                                   ],
@@ -357,19 +423,26 @@ class _TasksScreenState extends State<TasksScreen> {
                               if (task.dueDate != null)
                                 Row(
                                   children: [
-                                    Icon(
-                                      Icons.event, 
-                                      size: 14, 
-                                      color: _getDueDateColor(DateTime.parse(task.dueDate!), theme, task.isCompleted)
-                                    ),
+                                    Icon(Icons.event,
+                                        size: 14,
+                                        color: _getDueDateColor(
+                                            DateTime.parse(task.dueDate!),
+                                            theme,
+                                            task.isCompleted)),
                                     const SizedBox(width: 4),
                                     Text(
-                                      DateFormat('MMM d').format(DateTime.parse(task.dueDate!)),
+                                      DateFormat('MMM d').format(
+                                          DateTime.parse(task.dueDate!)),
                                       style: TextStyle(
-                                        fontSize: 13, 
-                                        color: _getDueDateColor(DateTime.parse(task.dueDate!), theme, task.isCompleted), 
+                                        fontSize: 13,
+                                        color: _getDueDateColor(
+                                            DateTime.parse(task.dueDate!),
+                                            theme,
+                                            task.isCompleted),
                                         fontWeight: FontWeight.w500,
-                                        decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                                        decoration: task.isCompleted
+                                            ? TextDecoration.lineThrough
+                                            : null,
                                       ),
                                     ),
                                   ],
@@ -380,7 +453,9 @@ class _TasksScreenState extends State<TasksScreen> {
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right, color: theme.colorScheme.outlineVariant.withOpacity(0.5)),
+                Icon(Icons.chevron_right,
+                    color: theme.colorScheme.outlineVariant
+                        .withValues(alpha: 0.5)),
               ],
             ),
           ),

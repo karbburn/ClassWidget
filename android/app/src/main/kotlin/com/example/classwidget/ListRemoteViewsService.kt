@@ -27,7 +27,7 @@ class ListRemoteViewsFactory(private val context: Context) : RemoteViewsService.
 
     override fun onDataSetChanged() {
         val widgetData = HomeWidgetPlugin.getData(context)
-        val jsonString = widgetData.getString("schedule_data", "{}")
+        val jsonString = widgetData.getString(AppConstants.KEY_SCHEDULE_DATA, "{}")
         
         // Dynamically determine "today" from system clock
         val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -35,15 +35,15 @@ class ListRemoteViewsFactory(private val context: Context) : RemoteViewsService.
         todayEvents = JSONArray()
         try {
             val jsonObject = JSONObject(jsonString)
-            showProfessorNames = jsonObject.optBoolean("showProfessorNames", true)
-            val allEvents = jsonObject.optJSONArray("events") ?: JSONArray()
+            showProfessorNames = jsonObject.optBoolean(AppConstants.KEY_SHOW_PROFESSOR_NAMES, true)
+            val allEvents = jsonObject.optJSONArray(AppConstants.KEY_EVENTS) ?: JSONArray()
             
             for (i in 0 until allEvents.length()) {
                 val event = allEvents.getJSONObject(i)
-                val eventDate = event.optString("date", "")
+                val eventDate = event.optString(AppConstants.KEY_DATE, "")
                 if (eventDate == todayStr) {
-                    val type = event.optString("type", "class")
-                    val completed = event.optBoolean("completed", false)
+                    val type = event.optString(AppConstants.KEY_TYPE, "class")
+                    val completed = event.optBoolean(AppConstants.KEY_COMPLETED, false)
                     if (type == "class" || !completed) {
                         todayEvents.put(event)
                     }
@@ -63,17 +63,29 @@ class ListRemoteViewsFactory(private val context: Context) : RemoteViewsService.
         
         try {
             val event = todayEvents.getJSONObject(position)
-            val id = event.optInt("id", -1)
-            val title = event.optString("title", "Unknown")
-            val startTime = event.optString("startTime", "")
-            val endTime = event.optString("endTime", "")
-            val professor = event.optString("professor", "")
-            val type = event.optString("type", "class")
+            val id = event.optInt(AppConstants.KEY_ID, -1)
+            val title = event.optString(AppConstants.KEY_TITLE, "Unknown")
+            val startTime = event.optString(AppConstants.KEY_START_TIME, "")
+            val endTime = event.optString(AppConstants.KEY_END_TIME, "")
+            val professor = event.optString(AppConstants.KEY_PROFESSOR, "")
+            val type = event.optString(AppConstants.KEY_TYPE, "class")
 
             // Dynamically compute isCurrent using system time
             val currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-            val isCurrent = type == "class" && startTime.isNotEmpty() && endTime.isNotEmpty() &&
-                            currentTime >= startTime && currentTime <= endTime
+            val isCurrent = if (type == "class" && startTime.isNotEmpty() && endTime.isNotEmpty()) {
+                try {
+                    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                    val currentParsed = timeFormat.parse(currentTime)
+                    val startParsed = timeFormat.parse(startTime)
+                    val endParsed = timeFormat.parse(endTime)
+                    currentParsed != null && startParsed != null && endParsed != null &&
+                        !currentParsed.before(startParsed) && !currentParsed.after(endParsed)
+                } catch (e: Exception) {
+                    false
+                }
+            } else {
+                false
+            }
 
             val timeDisplay = if (startTime.isEmpty()) "All Day" else "$startTime - $endTime"
 

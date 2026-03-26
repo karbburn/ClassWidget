@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../database/database_helper.dart';
 import '../models/schedule_event.dart';
-import '../services/time_helpers.dart';
 import '../services/widget_data_service.dart';
 
 class AddTaskScreen extends StatefulWidget {
@@ -17,7 +16,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _notesController = TextEditingController();
-  
+
   DateTime _selectedDate = DateTime.now();
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
@@ -32,11 +31,19 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       _selectedDate = DateTime.parse(event.date);
       if (event.startTime.isNotEmpty) {
         final parts = event.startTime.split(':');
-        _startTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+        final hour = int.tryParse(parts[0]);
+        final minute = parts.length > 1 ? int.tryParse(parts[1]) : 0;
+        if (hour != null && minute != null) {
+          _startTime = TimeOfDay(hour: hour, minute: minute);
+        }
       }
       if (event.endTime.isNotEmpty) {
         final parts = event.endTime.split(':');
-        _endTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+        final hour = int.tryParse(parts[0]);
+        final minute = parts.length > 1 ? int.tryParse(parts[1]) : 0;
+        if (hour != null && minute != null) {
+          _endTime = TimeOfDay(hour: hour, minute: minute);
+        }
       }
     }
   }
@@ -44,13 +51,24 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_startTime != null && _endTime != null) {
+      final startMinutes = _startTime!.hour * 60 + _startTime!.minute;
+      final endMinutes = _endTime!.hour * 60 + _endTime!.minute;
+      if (endMinutes <= startMinutes) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('End time must be after start time')),
+        );
+        return;
+      }
+    }
+
     final task = ScheduleEvent(
       id: widget.eventToEdit?.id,
       title: _titleController.text,
-      startTime: _startTime != null 
+      startTime: _startTime != null
           ? '${_startTime!.hour.toString().padLeft(2, '0')}:${_startTime!.minute.toString().padLeft(2, '0')}'
           : '',
-      endTime: _endTime != null 
+      endTime: _endTime != null
           ? '${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}'
           : '',
       type: 'task',
@@ -60,7 +78,18 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       date: DateFormat('yyyy-MM-dd').format(_selectedDate),
     );
 
-    await DatabaseHelper().insertEvent(task);
+    if (widget.eventToEdit != null) {
+      final taskMap = {
+        'id': widget.eventToEdit!.id,
+        'title': _titleController.text,
+        'is_completed': widget.eventToEdit!.completed,
+        'due_date': DateFormat('yyyy-MM-dd').format(_selectedDate),
+        'related_course': null,
+      };
+      await DatabaseHelper().updateTask(taskMap);
+    } else {
+      await DatabaseHelper().insertEvent(task);
+    }
     await WidgetDataService.refreshWidget(immediate: true);
     if (mounted) Navigator.pop(context, true);
   }
@@ -85,19 +114,23 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.title),
                 ),
-                validator: (value) => value == null || value.isEmpty ? 'Please enter a title' : null,
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Please enter a title'
+                    : null,
               ),
               const SizedBox(height: 16),
               ListTile(
                 title: const Text('Date'),
-                subtitle: Text(DateFormat('EEEE, MMM d, yyyy').format(_selectedDate)),
+                subtitle:
+                    Text(DateFormat('EEEE, MMM d, yyyy').format(_selectedDate)),
                 leading: const Icon(Icons.calendar_today),
                 trailing: const Icon(Icons.edit, size: 20),
                 onTap: () async {
                   final picked = await showDatePicker(
                     context: context,
                     initialDate: _selectedDate,
-                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                    firstDate:
+                        DateTime.now().subtract(const Duration(days: 365)),
                     lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
                   );
                   if (picked != null) setState(() => _selectedDate = picked);
@@ -157,9 +190,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 onPressed: _saveTask,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
-                child: Text(widget.eventToEdit == null ? 'Save Task' : 'Update Task'),
+                child: Text(
+                    widget.eventToEdit == null ? 'Save Task' : 'Update Task'),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context),

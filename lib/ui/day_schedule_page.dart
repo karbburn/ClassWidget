@@ -4,6 +4,7 @@ import '../database/database_helper.dart';
 import '../models/schedule_event.dart';
 import '../services/time_helpers.dart';
 import '../utils/color_utils.dart';
+import '../utils/constants.dart';
 import 'add_task_screen.dart';
 
 class DaySchedulePage extends StatefulWidget {
@@ -55,18 +56,25 @@ class _DaySchedulePageState extends State<DaySchedulePage>
   }
 
   Future<void> _toggleTaskCompletion(ScheduleEvent event) async {
-    await DatabaseHelper().updateEventCompletion(event.id!, !event.completed);
-    _loadEvents();
-    widget.onDataChanged?.call();
+    final id = event.id;
+    if (id != null) {
+      await DatabaseHelper().updateEventCompletion(id, !event.completed);
+      _loadEvents();
+      widget.onDataChanged?.call();
+    }
   }
 
   String get _headerLabel {
     final dayName = DateFormat('EEEE').format(widget.date);
-    switch (widget.pageIndex) {
+    final dayOffset = widget.pageIndex - AppConstants.centerIndex;
+
+    switch (dayOffset) {
       case 0:
         return '$dayName · Today';
       case 1:
         return '$dayName · Tomorrow';
+      case -1:
+        return '$dayName · Yesterday';
       default:
         return '$dayName · ${DateFormat('MMM d').format(widget.date)}';
     }
@@ -74,17 +82,27 @@ class _DaySchedulePageState extends State<DaySchedulePage>
 
   Widget _buildProgressBar(ThemeData theme) {
     if (_events == null || _events!.isEmpty) return const SizedBox.shrink();
-    if (widget.pageIndex != 0) return const SizedBox.shrink();
+    final dayOffset = widget.pageIndex - AppConstants.centerIndex;
+    if (dayOffset != 0) return const SizedBox.shrink();
 
     final classes = _events!.where((e) => e.type != 'task').toList();
     if (classes.isEmpty) return const SizedBox.shrink();
 
-    final nowMinutes = TimeHelpers.getMinutes(DateFormat('HH:mm').format(DateTime.now()));
+    final nowMinutes =
+        TimeHelpers.getMinutes(DateFormat('HH:mm').format(DateTime.now()));
     int completedCount = 0;
-    
+
     for (final c in classes) {
+      // Handly cases with empty endTime by assuming it's not completed yet
+      // unless it's a task manually marked completed (handled elsewhere)
       if (c.endTime.isNotEmpty) {
         if (TimeHelpers.getMinutes(c.endTime) < nowMinutes) {
+          completedCount++;
+        }
+      } else if (c.startTime.isNotEmpty) {
+        // If only start time is present, consider it completed 1 hour later
+        final startMinutes = TimeHelpers.getMinutes(c.startTime);
+        if (startMinutes + 60 < nowMinutes) {
           completedCount++;
         }
       }
@@ -105,7 +123,7 @@ class _DaySchedulePageState extends State<DaySchedulePage>
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
               Text(
@@ -123,8 +141,10 @@ class _DaySchedulePageState extends State<DaySchedulePage>
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: theme.colorScheme.outlineVariant.withOpacity(0.3),
-              valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+              backgroundColor:
+                  theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+              valueColor:
+                  AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
               minHeight: 6,
             ),
           ),
@@ -166,7 +186,6 @@ class _DaySchedulePageState extends State<DaySchedulePage>
     );
   }
 
-
   Widget _buildEmptyState(ThemeData theme) {
     return Center(
       child: Column(
@@ -177,19 +196,29 @@ class _DaySchedulePageState extends State<DaySchedulePage>
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               shape: BoxShape.circle,
-              border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.2), width: 2),
+              border: Border.all(
+                  color:
+                      theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+                  width: 2),
             ),
-            child: Icon(Icons.event_available_outlined, size: 64, color: theme.colorScheme.primary.withOpacity(0.5)),
+            child: Icon(Icons.event_available_outlined,
+                size: 64,
+                color: theme.colorScheme.primary.withValues(alpha: 0.5)),
           ),
           const SizedBox(height: 24),
           Text(
-            widget.pageIndex == 0 ? "Your day is clear! 🎉" : "Nothing scheduled",
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            widget.pageIndex == AppConstants.centerIndex
+                ? "Your day is clear! 🎉"
+                : "Nothing scheduled",
+            style: theme.textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             "Take a break or add a new task.",
-            style: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7)),
+            style: TextStyle(
+                color:
+                    theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7)),
           ),
         ],
       ),
@@ -198,10 +227,11 @@ class _DaySchedulePageState extends State<DaySchedulePage>
 
   Widget _buildEventList(ThemeData theme) {
     final now = DateTime.now();
-    final isToday = widget.pageIndex == 0;
-    final currentTimeMinutes = isToday
-        ? TimeHelpers.getMinutes(DateFormat('HH:mm').format(now))
-        : -1;
+    final isToday = widget.date.year == now.year &&
+        widget.date.month == now.month &&
+        widget.date.day == now.day;
+    final currentTimeMinutes =
+        isToday ? TimeHelpers.getMinutes(DateFormat('HH:mm').format(now)) : -1;
 
     return RefreshIndicator(
       color: theme.colorScheme.primary,
@@ -214,13 +244,19 @@ class _DaySchedulePageState extends State<DaySchedulePage>
           final isTask = event.type == 'task';
 
           bool isCurrent = false;
-          if (isToday && !isTask && event.startTime.isNotEmpty && event.endTime.isNotEmpty) {
+          if (isToday &&
+              !isTask &&
+              event.startTime.isNotEmpty &&
+              event.endTime.isNotEmpty) {
             final startMinutes = TimeHelpers.getMinutes(event.startTime);
             final endMinutes = TimeHelpers.getMinutes(event.endTime);
-            isCurrent = currentTimeMinutes >= startMinutes && currentTimeMinutes <= endMinutes;
+            isCurrent = currentTimeMinutes >= startMinutes &&
+                currentTimeMinutes <= endMinutes;
           }
-          
-          final subjectColor = isTask ? Colors.transparent : ColorUtils.getSubjectColor(event.title);
+
+          final subjectColor = isTask
+              ? Colors.transparent
+              : ColorUtils.getSubjectColor(event.title);
 
           return TweenAnimationBuilder<double>(
             tween: Tween(begin: 0.0, end: 1.0),
@@ -242,7 +278,8 @@ class _DaySchedulePageState extends State<DaySchedulePage>
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => AddTaskScreen(eventToEdit: event)),
+                            builder: (context) =>
+                                AddTaskScreen(eventToEdit: event)),
                       );
                       if (result == true) {
                         _loadEvents();
@@ -255,13 +292,15 @@ class _DaySchedulePageState extends State<DaySchedulePage>
                 decoration: BoxDecoration(
                   color: theme.cardTheme.color,
                   borderRadius: BorderRadius.circular(12),
-                  border: isCurrent 
-                    ? Border.all(color: theme.colorScheme.primary, width: 1.5)
-                    : Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.3)),
+                  border: isCurrent
+                      ? Border.all(color: theme.colorScheme.primary, width: 1.5)
+                      : Border.all(
+                          color: theme.colorScheme.outlineVariant
+                              .withValues(alpha: 0.3)),
                   boxShadow: [
                     if (isCurrent)
                       BoxShadow(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -289,7 +328,8 @@ class _DaySchedulePageState extends State<DaySchedulePage>
                                     padding: const EdgeInsets.only(right: 12),
                                     child: Checkbox(
                                       value: event.completed,
-                                      onChanged: (_) => _toggleTaskCompletion(event),
+                                      onChanged: (_) =>
+                                          _toggleTaskCompletion(event),
                                       shape: const CircleBorder(),
                                       activeColor: theme.colorScheme.primary,
                                       checkColor: theme.colorScheme.surface,
@@ -297,7 +337,8 @@ class _DaySchedulePageState extends State<DaySchedulePage>
                                   ),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
@@ -305,21 +346,33 @@ class _DaySchedulePageState extends State<DaySchedulePage>
                                         style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
-                                          decoration: event.completed ? TextDecoration.lineThrough : null,
-                                          color: event.completed ? theme.textTheme.bodyMedium?.color?.withOpacity(0.5) : null,
+                                          decoration: event.completed
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                          color: event.completed
+                                              ? theme
+                                                  .textTheme.bodyMedium?.color
+                                                  ?.withValues(alpha: 0.5)
+                                              : null,
                                         ),
                                       ),
-                                      if (event.startTime.isNotEmpty || event.endTime.isNotEmpty)
+                                      if (event.startTime.isNotEmpty ||
+                                          event.endTime.isNotEmpty)
                                         Padding(
-                                          padding: const EdgeInsets.only(top: 4),
+                                          padding:
+                                              const EdgeInsets.only(top: 4),
                                           child: Text(
                                             event.startTime.isEmpty
                                                 ? 'All Day'
                                                 : '${event.startTime} - ${event.endTime}',
                                             style: TextStyle(
                                               fontSize: 13,
-                                              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
-                                              decoration: event.completed ? TextDecoration.lineThrough : null,
+                                              color: theme
+                                                  .textTheme.bodyMedium?.color
+                                                  ?.withValues(alpha: 0.6),
+                                              decoration: event.completed
+                                                  ? TextDecoration.lineThrough
+                                                  : null,
                                             ),
                                           ),
                                         ),
@@ -328,11 +381,15 @@ class _DaySchedulePageState extends State<DaySchedulePage>
                                 ),
                                 if (isCurrent)
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: theme.colorScheme.primary.withOpacity(0.15),
+                                      color: theme.colorScheme.primary
+                                          .withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3)),
+                                      border: Border.all(
+                                          color: theme.colorScheme.primary
+                                              .withValues(alpha: 0.3)),
                                     ),
                                     child: Text(
                                       'NOW',
@@ -344,7 +401,8 @@ class _DaySchedulePageState extends State<DaySchedulePage>
                                     ),
                                   ),
                                 if (isTask && event.notes != null && !isCurrent)
-                                  Icon(Icons.notes, size: 16, color: theme.disabledColor),
+                                  Icon(Icons.notes,
+                                      size: 16, color: theme.disabledColor),
                               ],
                             ),
                           ),

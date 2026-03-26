@@ -27,7 +27,6 @@ class ScheduleEvent {
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'title': title,
       'start_time': startTime,
       'end_time': endTime,

@@ -27,6 +27,11 @@ class DatabaseHelper {
   }
 
   Future _onCreate(Database db, int version) async {
+    await _createEventsTable(db);
+    await _createTasksTable(db);
+  }
+
+  Future _createEventsTable(Database db) async {
     await db.execute('''
       CREATE TABLE events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,7 +48,9 @@ class DatabaseHelper {
         UNIQUE(date, start_time, title) ON CONFLICT IGNORE
       )
     ''');
+  }
 
+  Future _createTasksTable(Database db) async {
     await db.execute('''
       CREATE TABLE tasks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,31 +65,24 @@ class DatabaseHelper {
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       try {
-        await db.execute('''
-          CREATE TABLE tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            due_date TEXT,
-            related_course TEXT,
-            is_completed INTEGER NOT NULL DEFAULT 0
-          )
-        ''');
+        await _createTasksTable(db);
       } catch (_) {}
     }
     if (oldVersion < 3) {
-      // Add new columns to events table safely
       try {
-        await db.execute("ALTER TABLE events ADD COLUMN type TEXT NOT NULL DEFAULT 'class'");
+        await db.execute(
+            "ALTER TABLE events ADD COLUMN type TEXT NOT NULL DEFAULT 'class'");
       } catch (_) {}
-      
+
       try {
         await db.execute("ALTER TABLE events ADD COLUMN notes TEXT");
       } catch (_) {}
-      
+
       try {
-        await db.execute("ALTER TABLE events ADD COLUMN completed INTEGER NOT NULL DEFAULT 0");
+        await db.execute(
+            "ALTER TABLE events ADD COLUMN completed INTEGER NOT NULL DEFAULT 0");
       } catch (_) {}
-      
+
       // Migrate existing tasks if any (optional but nice)
       try {
         final List<Map<String, dynamic>> tasks = await db.query('tasks');
@@ -127,14 +127,6 @@ class DatabaseHelper {
     return await db.insert('events', event.toMap());
   }
 
-  Future<List<ScheduleEvent>> getEventsForToday(String date) async {
-    return _getSortedEventsByDate(date);
-  }
-
-  Future<List<ScheduleEvent>> getEventsForTomorrow(String date) async {
-    return _getSortedEventsByDate(date);
-  }
-
   Future<ScheduleEvent?> getNextEvent(String date, String currentTime) async {
     Database db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -162,7 +154,8 @@ class DatabaseHelper {
   /// Returns events for a given DateTime, sorted with timed events first (ASC)
   /// and untimed events (empty start_time) at the bottom.
   Future<List<ScheduleEvent>> getEventsForDateTime(DateTime date) async {
-    final dateStr = '${date.year.toString()}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final dateStr =
+        '${date.year.toString()}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     Database db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
       'events',
@@ -193,6 +186,9 @@ class DatabaseHelper {
     await db.delete('events', where: 'is_imported = ?', whereArgs: [1]);
   }
 
+  /// Returns a list of tasks.
+  /// Note: Since v3, tasks are also stored in the 'events' table with type='task'
+  /// to support a unified view. This method queries the 'events' table for these tasks.
   Future<List<Map<String, dynamic>>> getTasks() async {
     Database db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -200,15 +196,17 @@ class DatabaseHelper {
       where: "type = 'task'",
       orderBy: 'completed ASC, date ASC',
     );
-    
+
     // Map back to TaskItem format for the UI
-    return maps.map((m) => {
-      'id': m['id'],
-      'title': m['title'],
-      'due_date': m['date'],
-      'related_course': m['professor'],
-      'is_completed': m['completed'],
-    }).toList();
+    return maps
+        .map((m) => {
+              'id': m['id'],
+              'title': m['title'],
+              'due_date': m['date'],
+              'related_course': m['professor'],
+              'is_completed': m['completed'],
+            })
+        .toList();
   }
 
   Future<int> insertTask(Map<String, dynamic> taskMap) async {
@@ -249,7 +247,8 @@ class DatabaseHelper {
   }
 
   /// Returns events for a date range (inclusive), sorted by date then start_time.
-  Future<List<ScheduleEvent>> getEventsForDateRange(String startDate, String endDate) async {
+  Future<List<ScheduleEvent>> getEventsForDateRange(
+      String startDate, String endDate) async {
     Database db = await database;
     final List<Map<String, dynamic>> maps = await db.query(
       'events',
@@ -260,14 +259,22 @@ class DatabaseHelper {
     return List.generate(maps.length, (i) => ScheduleEvent.fromMap(maps[i]));
   }
 
-  Future<List<ScheduleEvent>> _getSortedEventsByDate(String date) async {
+  Future<String?> getMaxEventDate() async {
     Database db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'events',
-      where: 'date = ?',
-      whereArgs: [date],
-      orderBy: 'start_time ASC',
-    );
-    return List.generate(maps.length, (i) => ScheduleEvent.fromMap(maps[i]));
+    final List<Map<String, dynamic>> maps =
+        await db.rawQuery('SELECT MAX(date) as max_date FROM events');
+    if (maps.isNotEmpty && maps.first['max_date'] != null) {
+      return maps.first['max_date'] as String;
+    }
+    return null;
+  }
+
+  Future<void> clearAllData() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      batch.delete('events');
+      await batch.commit(noResult: true);
+    });
   }
 }

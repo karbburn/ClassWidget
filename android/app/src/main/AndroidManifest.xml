@@ -36,6 +36,13 @@
             </intent-filter>
         </receiver>
 
+        <!-- Boot Receiver for Alarms -->
+        <receiver android:name=".BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
         <!-- App Widget Provider Registration -->
         <receiver android:name=".ClassWidgetProvider"
             android:exported="true">

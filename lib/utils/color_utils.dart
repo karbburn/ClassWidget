@@ -12,16 +12,29 @@ class ColorUtils {
     const Color(0xFF90A4AE), // Blue Grey
   ];
 
+  static final Map<String, Color> _colorCache = {};
+  static const int _maxCacheSize = 100;
+
   /// Deterministically assigns a stable color to a given string
-  static Color getSubjectColor(String title) {
-    if (title.isEmpty) return _curatedColors[0];
-    
+  static Color getSubjectColor(String title, {Color? fallback}) {
+    if (title.isEmpty) return fallback ?? _curatedColors[0];
+
+    if (_colorCache.containsKey(title)) {
+      return _colorCache[title]!;
+    }
+
     int hash = 0;
     for (int i = 0; i < title.length; i++) {
       hash = title.codeUnitAt(i) + ((hash << 5) - hash);
     }
-    
+
     final index = hash.abs() % _curatedColors.length;
-    return _curatedColors[index];
+    final color = _curatedColors[index];
+
+    if (_colorCache.length >= _maxCacheSize) {
+      _colorCache.remove(_colorCache.keys.first);
+    }
+    _colorCache[title] = color;
+    return color;
   }
 }

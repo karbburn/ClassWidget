@@ -1,10 +1,9 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/constants.dart';
 
 class PreferencesService {
   static const String _keySelectedSection = 'selected_section';
-  static const String _keyShowProfessorNames = 'show_professor_names';
   static const String _keyLastRefreshDate = 'last_refresh_date';
-  static const String _keyThemeMode = 'theme_mode';
 
   static Future<String?> getSelectedSection() async {
     final prefs = await SharedPreferences.getInstance();
@@ -18,12 +17,22 @@ class PreferencesService {
 
   static Future<bool> getShowProfessorNames() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyShowProfessorNames) ?? true;
+    return prefs.getBool(AppConstants.prefShowProfessor) ?? true;
   }
 
   static Future<void> setShowProfessorNames(bool show) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyShowProfessorNames, show);
+    await prefs.setBool(AppConstants.prefShowProfessor, show);
+  }
+
+  static Future<int> getMorningCutoff() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(AppConstants.prefMorningCutoff) ?? AppConstants.defaultMorningCutoff;
+  }
+
+  static Future<void> setMorningCutoff(int hour) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(AppConstants.prefMorningCutoff, hour);
   }
 
   static Future<String?> getLastRefreshDate() async {
@@ -38,11 +47,11 @@ class PreferencesService {
 
   static Future<String> getThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyThemeMode) ?? 'system';
+    return prefs.getString(AppConstants.prefThemeMode) ?? 'system';
   }
 
   static Future<void> setThemeMode(String mode) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyThemeMode, mode);
+    await prefs.setString(AppConstants.prefThemeMode, mode);
   }
 }
