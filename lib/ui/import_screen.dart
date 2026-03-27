@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/schedule_import.dart';
 import '../services/preferences_service.dart';
-import '../services/widget_data_service.dart';
+import '../providers/widget_data_provider.dart';
 import 'import_preview_screen.dart';
 
-class ImportScreen extends StatefulWidget {
+class ImportScreen extends ConsumerStatefulWidget {
   const ImportScreen({super.key});
 
   @override
-  State<ImportScreen> createState() => _ImportScreenState();
+  ConsumerState<ImportScreen> createState() => _ImportScreenState();
 }
 
-class _ImportScreenState extends State<ImportScreen> {
+class _ImportScreenState extends ConsumerState<ImportScreen> {
   final scheduleImport = ScheduleImport();
   String? _selectedSection;
   bool _isLoading = false;
@@ -60,7 +61,9 @@ class _ImportScreenState extends State<ImportScreen> {
                 setState(() => _isLoading = false);
                 if (result.success && context.mounted) {
                   _showSuccessDialog(result, sectionLabel);
-                  await WidgetDataService.refreshWidget(immediate: true);
+                  await ref
+                      .read(widgetRefreshProvider)
+                      .refresh(immediate: true);
                 } else if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -247,7 +250,9 @@ class _ImportScreenState extends State<ImportScreen> {
                             const SnackBar(
                                 content: Text('Imported schedule cleared!')));
                       }
-                      await WidgetDataService.refreshWidget(immediate: true);
+                      await ref
+                          .read(widgetRefreshProvider)
+                          .refresh(immediate: true);
                     }
                   },
                   icon: const Icon(Icons.delete_sweep_outlined,
@@ -338,7 +343,9 @@ class _ImportScreenState extends State<ImportScreen> {
                           content: Text('App data reset successfully!'),
                           backgroundColor: Colors.red));
                     }
-                    await WidgetDataService.refreshWidget(immediate: true);
+                    await ref
+                        .read(widgetRefreshProvider)
+                        .refresh(immediate: true);
                   }
                 },
                 icon: const Icon(Icons.warning_amber_rounded,

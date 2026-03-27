@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import '../services/theme_controller.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/theme_provider.dart';
 
-class ThemeToggle extends StatelessWidget {
-  final ThemeController controller;
-
-  const ThemeToggle({super.key, required this.controller});
+class ThemeToggle extends ConsumerWidget {
+  const ThemeToggle({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       height: 36,
-      width: 72, // Fixed width for consistent segmented feel (36 * 2)
+      width: 72,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: isDark
@@ -26,17 +26,15 @@ class ThemeToggle extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // Sliding Indicator
           AnimatedAlign(
             duration: const Duration(milliseconds: 300),
-            curve: Curves.elasticOut, // More organic feel like framer-motion
-            alignment: _getAlignment(controller.themeMode),
+            curve: Curves.elasticOut,
+            alignment: _getAlignment(themeMode),
             child: FractionallySizedBox(
               widthFactor: 1 / 2,
               child: Container(
                 decoration: BoxDecoration(
-                  color: theme.colorScheme
-                      .primary, // Using theme Primary (Gold) instead of hardcoded blue
+                  color: theme.colorScheme.primary,
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
@@ -49,11 +47,12 @@ class ThemeToggle extends StatelessWidget {
               ),
             ),
           ),
-          // Icons
           Row(
             children: [
-              _buildOption(context, ThemeMode.light, Icons.light_mode_outlined),
-              _buildOption(context, ThemeMode.dark, Icons.dark_mode_outlined),
+              _buildOption(context, ref, ThemeMode.light,
+                  Icons.light_mode_outlined, themeMode),
+              _buildOption(context, ref, ThemeMode.dark,
+                  Icons.dark_mode_outlined, themeMode),
             ],
           ),
         ],
@@ -61,23 +60,22 @@ class ThemeToggle extends StatelessWidget {
     );
   }
 
-  Widget _buildOption(BuildContext context, ThemeMode mode, IconData icon) {
-    final isSelected = controller.themeMode == mode;
+  Widget _buildOption(BuildContext context, WidgetRef ref, ThemeMode mode,
+      IconData icon, ThemeMode currentMode) {
+    final isSelected = currentMode == mode;
     final theme = Theme.of(context);
 
     return Expanded(
       child: GestureDetector(
-        onTap: () => controller.updateThemeMode(mode),
+        onTap: () => ref.read(themeProvider.notifier).setTheme(mode),
         behavior: HitTestBehavior.opaque,
         child: Center(
           child: Icon(
             icon,
             size: 16,
             color: isSelected
-                ? theme.colorScheme
-                    .onPrimary // Black/Dark icon on the Gold background
-                : theme.colorScheme.onSurface
-                    .withValues(alpha: 0.5), // Muted for unselected
+                ? theme.colorScheme.onPrimary
+                : theme.colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ),
       ),
@@ -89,6 +87,7 @@ class ThemeToggle extends StatelessWidget {
       case ThemeMode.dark:
         return Alignment.centerRight;
       case ThemeMode.light:
+        return Alignment.centerLeft;
       default:
         return Alignment.centerLeft;
     }

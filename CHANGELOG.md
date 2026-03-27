@@ -1,5 +1,26 @@
 # ClassWidget Changelog
 
+## v3.1.0 (Modernization & Reliability)
+
+The "Riverpod & Hardening" release. Complete architectural modernization and native widget performance improvements.
+
+### ⚡ Architectural Modernization
+* **Riverpod Integration**: Fully migrated state management to `flutter_riverpod` for a more robust, reactive, and testable codebase.
+* **Centralized Providers**: Implemented dedicated providers for database, user preferences, theme, and widget synchronization.
+* **Consumer Architecture**: Refactored core UI components (`main`, `ThemeToggle`, `ImportPreview`) to efficiently consume reactive state.
+
+### 📱 Premium UI & UX Enhancements
+* **Premium Theme Toggle**: New animated, elastic-curve theme switcher with Material 3 design tokens.
+* **Material 3 Refinement**: Updated `ImportPreviewScreen` and other UI elements with modern `withValues` alpha blending for a sleeker aesthetic.
+* **Smooth Animations**: Integrated `elasticOut` curves and staggered transitions for a more fluid user experience.
+
+### 🛠️ Android Widget Hardening
+* **High-Frequency Updates**: Implemented `setAndAllowWhileIdle` alarms in Kotlin for ultra-reliable minute-by-minute countdowns even in Doze mode.
+* **Native SQLite Interaction**: Widget now performs native database updates for immediate "Task Complete" feedback without waiting for Flutter wake-up.
+* **Midnight Persistence**: Hardened `ACTION_MIDNIGHT_REFRESH` to ensure zero-day gaps in schedule rotation.
+
+---
+
 ## v3.0.0 (Production Release)
 
 The "Production Hardening" release. Massive reliability improvements, unified database architecture, and UI stability for all screen sizes.

@@ -76,6 +76,12 @@ class ClassWidgetProvider : AppWidgetProvider() {
                 
                 // Force the ListView to re-read and re-filter data by new system date
                 appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list_view)
+                
+                // Additional notify after brief delay to ensure fresh data read
+                Handler(Looper.getMainLooper()).postDelayed({
+                    appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list_view)
+                }, 200)
+                
                 for (appWidgetId in appWidgetIds) {
                     val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
                     updateAppWidget(context, appWidgetManager, appWidgetId, options)
@@ -169,9 +175,14 @@ class ClassWidgetProvider : AppWidgetProvider() {
             val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
             updateAppWidget(context, appWidgetManager, appWidgetId, options)
         }
-        // CRITICAL: Force ListView to re-read data on EVERY update cycle.
+        // Force ListView to re-read data on EVERY update cycle.
         // Without this, the RemoteViewsFactory uses stale cached data.
         appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list_view)
+
+        // Additional notify after brief delay to ensure fresh data read
+        Handler(Looper.getMainLooper()).postDelayed({
+            appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list_view)
+        }, 200)
 
         // Ensure alarms are always scheduled
         scheduleMidnightAlarm(context)

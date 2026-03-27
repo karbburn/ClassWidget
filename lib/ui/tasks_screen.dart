@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/task_item.dart';
 import '../database/database_helper.dart';
-import '../services/widget_data_service.dart';
+import '../providers/widget_data_provider.dart';
 import 'package:intl/intl.dart';
 
-class TasksScreen extends StatefulWidget {
+class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
 
   @override
-  State<TasksScreen> createState() => _TasksScreenState();
+  ConsumerState<TasksScreen> createState() => _TasksScreenState();
 }
 
-class _TasksScreenState extends State<TasksScreen> {
+class _TasksScreenState extends ConsumerState<TasksScreen> {
   final dbHelper = DatabaseHelper();
   List<TaskItem> _tasks = [];
   bool _isLoading = true;
@@ -35,13 +36,13 @@ class _TasksScreenState extends State<TasksScreen> {
     final updated = task.copyWith(isCompleted: !task.isCompleted);
     await dbHelper.updateTask(updated.toMap());
     _loadTasks();
-    await WidgetDataService.refreshWidget(immediate: true);
+    await ref.read(widgetRefreshProvider).refresh(immediate: true);
   }
 
   Future<void> _deleteTask(int id) async {
     await dbHelper.deleteTask(id);
     _loadTasks();
-    await WidgetDataService.refreshWidget(immediate: true);
+    await ref.read(widgetRefreshProvider).refresh(immediate: true);
   }
 
   void _showTaskDialog([TaskItem? task]) {
@@ -207,7 +208,9 @@ class _TasksScreenState extends State<TasksScreen> {
 
                     if (context.mounted) Navigator.pop(context);
                     _loadTasks();
-                    await WidgetDataService.refreshWidget(immediate: true);
+                    await ref
+                        .read(widgetRefreshProvider)
+                        .refresh(immediate: true);
                   },
                   child: Text(task == null ? 'CREATE TASK' : 'SAVE CHANGES'),
                 ),
@@ -323,7 +326,7 @@ class _TasksScreenState extends State<TasksScreen> {
     final theme = Theme.of(context);
 
     return Dismissible(
-      key: ValueKey(task.id),
+      key: ValueKey(task.id ?? task.title),
       direction: DismissDirection.endToStart,
       background: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -335,7 +338,11 @@ class _TasksScreenState extends State<TasksScreen> {
         padding: const EdgeInsets.only(right: 24),
         child: const Icon(Icons.delete_outline, color: Colors.white),
       ),
-      onDismissed: (_) => _deleteTask(task.id!),
+      onDismissed: (_) {
+        if (task.id != null) {
+          _deleteTask(task.id!);
+        }
+      },
       child: Card(
         margin: const EdgeInsets.only(bottom: 12),
         color: theme.cardTheme.color,
@@ -453,14 +460,38 @@ class _TasksScreenState extends State<TasksScreen> {
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right,
-                    color: theme.colorScheme.outlineVariant
-                        .withValues(alpha: 0.5)),
+                IconButton(
+                  icon: Icon(Icons.delete_outline, color: Colors.red[400]),
+                  onPressed: () => _confirmDeleteTask(task),
+                ),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDeleteTask(TaskItem task) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Task?'),
+        content: Text('Are you sure you want to delete "${task.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('DELETE', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true && task.id != null) {
+      await _deleteTask(task.id!);
+    }
   }
 }

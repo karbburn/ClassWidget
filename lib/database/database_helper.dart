@@ -229,7 +229,13 @@ class DatabaseHelper {
     Database db = await database;
     final eventMap = {
       'title': taskMap['title'],
-      'completed': taskMap['is_completed'],
+      'start_time': taskMap['start_time'] ?? '',
+      'end_time': taskMap['end_time'] ?? '',
+      'notes': taskMap['notes'],
+      'type': 'task',
+      'completed': taskMap['is_completed'] == true
+          ? 1
+          : (taskMap['is_completed'] == 1 ? 1 : 0),
       'date': taskMap['due_date'] ?? '',
       'professor': taskMap['related_course'],
     };

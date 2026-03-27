@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../database/database_helper.dart';
 import '../models/schedule_event.dart';
-import '../services/widget_data_service.dart';
+import '../providers/widget_data_provider.dart';
 
-class AddTaskScreen extends StatefulWidget {
+class AddTaskScreen extends ConsumerStatefulWidget {
   final ScheduleEvent? eventToEdit;
   const AddTaskScreen({super.key, this.eventToEdit});
 
   @override
-  State<AddTaskScreen> createState() => _AddTaskScreenState();
+  ConsumerState<AddTaskScreen> createState() => _AddTaskScreenState();
 }
 
-class _AddTaskScreenState extends State<AddTaskScreen> {
+class _AddTaskScreenState extends ConsumerState<AddTaskScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _notesController = TextEditingController();
@@ -82,7 +83,14 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       final taskMap = {
         'id': widget.eventToEdit!.id,
         'title': _titleController.text,
-        'is_completed': widget.eventToEdit!.completed,
+        'start_time': _startTime != null
+            ? '${_startTime!.hour.toString().padLeft(2, '0')}:${_startTime!.minute.toString().padLeft(2, '0')}'
+            : '',
+        'end_time': _endTime != null
+            ? '${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}'
+            : '',
+        'notes': _notesController.text.isEmpty ? null : _notesController.text,
+        'is_completed': widget.eventToEdit!.completed ? 1 : 0,
         'due_date': DateFormat('yyyy-MM-dd').format(_selectedDate),
         'related_course': null,
       };
@@ -90,7 +98,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     } else {
       await DatabaseHelper().insertEvent(task);
     }
-    await WidgetDataService.refreshWidget(immediate: true);
+    await ref.read(widgetRefreshProvider).refresh(immediate: true);
     if (mounted) Navigator.pop(context, true);
   }
 

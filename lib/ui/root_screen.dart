@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import '../services/theme_controller.dart';
-import '../services/widget_data_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/widget_data_provider.dart';
 import 'dashboard_screen.dart';
 import 'tasks_screen.dart';
 import 'import_screen.dart';
 
-class RootScreen extends StatefulWidget {
-  final ThemeController themeController;
-  const RootScreen({super.key, required this.themeController});
+class RootScreen extends ConsumerStatefulWidget {
+  const RootScreen({super.key});
 
   @override
-  State<RootScreen> createState() => _RootScreenState();
+  ConsumerState<RootScreen> createState() => _RootScreenState();
 }
 
-class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
+class _RootScreenState extends ConsumerState<RootScreen>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
   late final List<Widget> _screens;
 
@@ -22,7 +22,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _screens = [
-      DashboardScreen(themeController: widget.themeController),
+      const DashboardScreen(),
       const TasksScreen(),
       const ImportScreen(),
     ];
@@ -37,8 +37,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Refresh widget data when returning to app
-      WidgetDataService.refreshWidget();
+      ref.read(widgetRefreshProvider).refresh(immediate: true);
     }
   }
 

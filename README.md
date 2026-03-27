@@ -2,18 +2,22 @@
 
 [![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)](https://flutter.dev)
 [![Android](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://android.com)
-[![Stable Version](https://img.shields.io/badge/Release-v3.0.0-blue.svg?style=for-the-badge)](https://github.com/karbburn/ClassWidget/releases)
+[![Stable Version](https://img.shields.io/badge/Release-v3.1.0-blue.svg?style=for-the-badge)](https://github.com/karbburn/ClassWidget/releases)
+
+---
+
+## 🚀 What's New in v3.1.0 (Modernization & Reliability)
+
+The "Riverpod & Hardening" release. Massive architectural improvements for stability and a new premium theme experience.
+
+- **Full Riverpod Migration**: State management is now 100% reactive, using `flutter_riverpod` for seamless theme and data updates.
+- **Premium Animated Theme Toggle**: A new, interactive theme switcher with Material 3 styling and elastic animations.
+- **High-Frequency Android Widget**: Hardened Kotlin alarm logic for reliable minute-by-minute countdowns even in low-power modes.
+- **Native Task Completion**: Instant widget-to-database updates for "Task Complete" actions, bypassing Flutter cold-starts.
 
 ---
 
 ## 🚀 What's New in v3.0.0 (Production Release)
-
-The "Production Hardening" release. Focused on 100% data integrity, native Android reliability, and modern Material 3 styling.
-
-- **Unified Database Architecture**: Migrated to a single high-performance `events` table with atomic `Batch` transactions.
-- **Resilient Home Screen Widget**: Completely rewritten Kotlin provider for guaranteed background updates and instant boot-time recovery.
-- **Sliver UI Refactor**: The Import Preview screen now uses a high-performance `CustomScrollView` with `Slivers` for zero-overflow layouts.
-- **Lifecycle Synchronization**: App-to-Widget state syncing now happens immediately on resume, ensuring real-time accuracy.
 
 ---
 
@@ -49,7 +53,7 @@ The "Production Hardening" release. Focused on 100% data integrity, native Andro
 - **Database**: SQLite (Local-first reliability)
 - **Native Bridge**: Kotlin (Android AppWidget Provider)
 - **Design System**: Custom dark UI with CSS-inspired XML layouts
-- **State Management**: Provider / Controller patterns
+- **State Management**: flutter_riverpod (Provider / Controller patterns)
 - **Utilities**: HomeWidget, Excel Parser, Intl (Localization)
 
 ---

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/widget_data_service.dart';
-import '../services/theme_controller.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/widget_data_provider.dart';
 import '../services/preferences_service.dart';
 import '../services/log_service.dart';
 import '../widgets/theme_toggle.dart';
@@ -8,15 +8,14 @@ import 'day_schedule_page.dart';
 import '../database/database_helper.dart';
 import '../utils/constants.dart';
 
-class DashboardScreen extends StatefulWidget {
-  final ThemeController themeController;
-  const DashboardScreen({super.key, required this.themeController});
+class DashboardScreen extends ConsumerStatefulWidget {
+  const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen>
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with WidgetsBindingObserver {
   int _totalPages = 500; // Efficient default buffer (approx 1.3 years)
   late PageController _pageController;
@@ -84,7 +83,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Future<void> _syncWidget() async {
     try {
-      await WidgetDataService.refreshWidget(immediate: true);
+      await ref.read(widgetRefreshProvider).refresh(immediate: true);
     } catch (e, stack) {
       LogService.error('Widget sync failed', e, stack);
     }
@@ -127,9 +126,9 @@ class _DashboardScreenState extends State<DashboardScreen>
           ],
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-            child: ThemeToggle(controller: widget.themeController),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            child: ThemeToggle(),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
