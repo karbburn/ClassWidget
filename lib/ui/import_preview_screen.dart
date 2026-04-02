@@ -129,7 +129,7 @@ class _ImportPreviewScreenState extends State<ImportPreviewScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: allSheets.contains(_currentSection)
+                          initialValue: allSheets.contains(_currentSection)
                               ? _currentSection
                               : (allSheets.isNotEmpty ? allSheets.first : null),
                           decoration: InputDecoration(

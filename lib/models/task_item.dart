@@ -22,6 +22,16 @@ class TaskItem {
     };
   }
 
+  Map<String, dynamic> toMapWithId() {
+    return {
+      'id': id,
+      'title': title,
+      'due_date': dueDate,
+      'related_course': relatedCourse,
+      'is_completed': isCompleted ? 1 : 0,
+    };
+  }
+
   factory TaskItem.fromMap(Map<String, dynamic> map) {
     return TaskItem(
       id: map['id'],

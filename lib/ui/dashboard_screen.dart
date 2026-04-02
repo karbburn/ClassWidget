@@ -63,7 +63,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             final today = DateTime.now();
             final daysToMax = maxDate.difference(today).inDays;
             // Cap at 120 days as per user's 4-month request, but always allow at least 15 days
-            final futureBuffer = daysToMax.clamp(15, 120);
+            final futureBuffer = daysToMax.clamp(15, 120).toInt();
             _totalPages = AppConstants.centerIndex + futureBuffer + 1;
           } catch (_) {
             _totalPages = AppConstants.centerIndex + 120; // fallback

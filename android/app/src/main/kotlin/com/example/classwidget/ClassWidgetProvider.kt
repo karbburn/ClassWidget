@@ -309,7 +309,7 @@ class ClassWidgetProvider : AppWidgetProvider() {
             val baseIntent = Intent(context, ClassWidgetProvider::class.java)
             val basePendingIntent = PendingIntent.getBroadcast(
                 context, 1000 + appWidgetId, baseIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
             )
             views.setPendingIntentTemplate(R.id.widget_list_view, basePendingIntent)
         }

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/task_item.dart';
-import '../database/database_helper.dart';
+import '../repositories/repository_providers.dart';
 import '../providers/widget_data_provider.dart';
+import '../services/log_service.dart';
 import 'package:intl/intl.dart';
 
 class TasksScreen extends ConsumerStatefulWidget {
@@ -13,9 +14,10 @@ class TasksScreen extends ConsumerStatefulWidget {
 }
 
 class _TasksScreenState extends ConsumerState<TasksScreen> {
-  final dbHelper = DatabaseHelper();
   List<TaskItem> _tasks = [];
   bool _isLoading = true;
+  bool _hasError = false;
+  String _errorMessage = '';
 
   @override
   void initState() {
@@ -24,23 +26,39 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   }
 
   Future<void> _loadTasks() async {
-    setState(() => _isLoading = true);
-    final taskMaps = await dbHelper.getTasks();
+    LogService.log('Loading tasks...', tag: 'TasksScreen');
     setState(() {
-      _tasks = taskMaps.map((m) => TaskItem.fromMap(m)).toList();
-      _isLoading = false;
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = '';
     });
+    try {
+      final tasks = await ref.read(taskRepositoryProvider).getAllTasks();
+      LogService.log('Fetched ${tasks.length} tasks from DB', tag: 'TasksScreen');
+      if (!mounted) return;
+      setState(() {
+        _tasks = tasks;
+        _isLoading = false;
+      });
+    } catch (e, stack) {
+      LogService.error('Failed to load tasks', e, stack);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _errorMessage = e.toString();
+      });
+    }
   }
 
   Future<void> _toggleTask(TaskItem task) async {
-    final updated = task.copyWith(isCompleted: !task.isCompleted);
-    await dbHelper.updateTask(updated.toMap());
+    await ref.read(taskRepositoryProvider).toggleCompletion(task);
     _loadTasks();
     await ref.read(widgetRefreshProvider).refresh(immediate: true);
   }
 
   Future<void> _deleteTask(int id) async {
-    await dbHelper.deleteTask(id);
+    await ref.read(taskRepositoryProvider).deleteTask(id);
     _loadTasks();
     await ref.read(widgetRefreshProvider).refresh(immediate: true);
   }
@@ -201,9 +219,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                     );
 
                     if (task == null) {
-                      await dbHelper.insertTask(newTask.toMap());
+                      await ref.read(taskRepositoryProvider).createTask(newTask);
                     } else {
-                      await dbHelper.updateTask(newTask.toMap());
+                      await ref.read(taskRepositoryProvider).updateTask(newTask);
                     }
 
                     if (context.mounted) Navigator.pop(context);
@@ -236,33 +254,72 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _tasks.isEmpty
-              ? RefreshIndicator(
-                  onRefresh: _loadTasks,
-                  child: LayoutBuilder(
-                      builder: (context, constraints) => SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            child: SizedBox(
-                              height: constraints.maxHeight,
-                              child: _buildEmptyState(),
-                            ),
-                          )),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadTasks,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _tasks.length,
-                    itemBuilder: (context, index) {
-                      final task = _tasks[index];
-                      return _buildTaskItem(task);
-                    },
-                  ),
-                ),
+          : _hasError
+              ? _buildErrorState()
+              : _tasks.isEmpty
+                  ? RefreshIndicator(
+                      onRefresh: _loadTasks,
+                      child: LayoutBuilder(
+                          builder: (context, constraints) => SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                child: SizedBox(
+                                  height: constraints.maxHeight,
+                                  child: _buildEmptyState(),
+                                ),
+                              )),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _loadTasks,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _tasks.length,
+                        itemBuilder: (context, index) {
+                          final task = _tasks[index];
+                          return _buildTaskItem(task);
+                        },
+                      ),
+                    ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showTaskDialog(),
         icon: const Icon(Icons.add_task),
         label: const Text('New Task'),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline,
+                size: 64, color: Colors.red.withValues(alpha: 0.7)),
+            const SizedBox(height: 24),
+            Text(
+              'Something went wrong',
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 13,
+                  color: theme.textTheme.bodyMedium?.color
+                      ?.withValues(alpha: 0.6)),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadTasks,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -427,33 +484,36 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                     const SizedBox(width: 12),
                                   ],
                                 ),
-                              if (task.dueDate != null)
-                                Row(
-                                  children: [
-                                    Icon(Icons.event,
-                                        size: 14,
-                                        color: _getDueDateColor(
-                                            DateTime.parse(task.dueDate!),
-                                            theme,
-                                            task.isCompleted)),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      DateFormat('MMM d').format(
-                                          DateTime.parse(task.dueDate!)),
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: _getDueDateColor(
-                                            DateTime.parse(task.dueDate!),
-                                            theme,
-                                            task.isCompleted),
-                                        fontWeight: FontWeight.w500,
-                                        decoration: task.isCompleted
-                                            ? TextDecoration.lineThrough
-                                            : null,
+                              if (task.dueDate != null && task.dueDate!.isNotEmpty)
+                                Builder(builder: (context) {
+                                  final parsedDate = DateTime.tryParse(task.dueDate!);
+                                  if (parsedDate == null) return const SizedBox.shrink();
+                                  return Row(
+                                    children: [
+                                      Icon(Icons.event,
+                                          size: 14,
+                                          color: _getDueDateColor(
+                                              parsedDate,
+                                              theme,
+                                              task.isCompleted)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        DateFormat('MMM d').format(parsedDate),
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: _getDueDateColor(
+                                              parsedDate,
+                                              theme,
+                                              task.isCompleted),
+                                          fontWeight: FontWeight.w500,
+                                          decoration: task.isCompleted
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
+                                    ],
+                                  );
+                                }),
                             ],
                           ),
                         ),

@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/schedule_event.dart';
+import '../services/log_service.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -8,7 +9,7 @@ class DatabaseHelper {
   DatabaseHelper._internal();
 
   static Database? _database;
-  static const int _databaseVersion = 3;
+  static const int _databaseVersion = 4;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -29,6 +30,13 @@ class DatabaseHelper {
   Future _onCreate(Database db, int version) async {
     await _createEventsTable(db);
     await _createTasksTable(db);
+    await _createIndexes(db);
+  }
+
+  Future _createIndexes(Database db) async {
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_events_date ON events(date)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_events_type ON events(type)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_events_imported ON events(is_imported)');
   }
 
   Future _createEventsTable(Database db) async {
@@ -101,6 +109,11 @@ class DatabaseHelper {
       } catch (_) {
         // Table 'tasks' might not exist or migration already done
       }
+    }
+    if (oldVersion < 4) {
+      try {
+        await _createIndexes(db);
+      } catch (_) {}
     }
   }
 
@@ -190,23 +203,28 @@ class DatabaseHelper {
   /// Note: Since v3, tasks are also stored in the 'events' table with type='task'
   /// to support a unified view. This method queries the 'events' table for these tasks.
   Future<List<Map<String, dynamic>>> getTasks() async {
-    Database db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'events',
-      where: "type = 'task'",
-      orderBy: 'completed ASC, date ASC',
-    );
+    try {
+      Database db = await database;
+      final List<Map<String, dynamic>> maps = await db.query(
+        'events',
+        where: "type = 'task'",
+        orderBy: 'completed ASC, date ASC',
+      );
 
-    // Map back to TaskItem format for the UI
-    return maps
-        .map((m) => {
-              'id': m['id'],
-              'title': m['title'],
-              'due_date': m['date'],
-              'related_course': m['professor'],
-              'is_completed': m['completed'],
-            })
-        .toList();
+      // Map back to TaskItem format for the UI
+      return maps.map((m) {
+        return <String, dynamic>{
+          'id': m['id'],
+          'title': m['title'],
+          'due_date': m['date'],
+          'related_course': m['professor'],
+          'is_completed': m['completed'],
+        };
+      }).toList();
+    } catch (e) {
+      LogService.error('Failed to fetch tasks', e);
+      return [];
+    }
   }
 
   Future<int> insertTask(Map<String, dynamic> taskMap) async {
