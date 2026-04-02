@@ -17,7 +17,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with WidgetsBindingObserver {
-  int _totalPages = 500; // Efficient default buffer (approx 1.3 years)
+  int _totalPages = AppConstants.centerIndex + 120; // Enough buffer to ensure initialPage 1000 is valid
   late PageController _pageController;
   int _currentPage = AppConstants.centerIndex;
   String? _selectedSection;
