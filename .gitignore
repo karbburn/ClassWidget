@@ -60,6 +60,10 @@ analysis_*.txt
 design-system/
 directives/
 execution/
+AGENTS.md
 
 # Temp files
 .tmp/
+
+# Xcode boilerplate
+ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md
