@@ -1,85 +1,99 @@
-# ClassWidget 🎓
+# ClassWidget
 
-[![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)](https://flutter.dev)
-[![Android](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://android.com)
-[![Stable Version](https://img.shields.io/badge/Release-v3.1.0-blue.svg?style=for-the-badge)](https://github.com/karbburn/ClassWidget/releases)
+**Flutter** **Android** **v3.1.0**
 
----
-
-## 🚀 What's New in v3.1.0 (Modernization & Reliability)
-
-The "Riverpod & Hardening" release. Massive architectural improvements for stability and a new premium theme experience.
-
-- **Full Riverpod Migration**: State management is now 100% reactive, using `flutter_riverpod` for seamless theme and data updates.
-- **Premium Animated Theme Toggle**: A new, interactive theme switcher with Material 3 styling and elastic animations.
-- **High-Frequency Android Widget**: Hardened Kotlin alarm logic for reliable minute-by-minute countdowns even in low-power modes.
-- **Native Task Completion**: Instant widget-to-database updates for "Task Complete" actions, bypassing Flutter cold-starts.
+A student scheduling app for Android with a home screen widget. Import university timetables from Excel or CSV files, manage tasks and assignments, and view your daily schedule in a unified timeline -- all with a Material 3 dark theme.
 
 ---
 
-## 🚀 What's New in v3.0.0 (Production Release)
+## Features
+
+### Schedule Import
+Import university timetables from Excel (.xlsx) or CSV files. The parser automatically detects time slots, dates, professors, and sections. A preview screen lets you verify imported data before saving.
+
+### Android Home Screen Widget
+Three widget sizes (2x1 small, 4x2 medium, 4x4 large) show your daily schedule directly on the home screen. Features include real-time "Up Next" countdowns, interactive task checkboxes that update the database without a Flutter cold-start, and dark theme styling.
+
+### Task Management
+Create, edit, complete, and delete tasks. Swipe-to-delete with priority indicators. Tasks appear alongside classes in the chronological dashboard.
+
+### Unified Timeline
+Classes and tasks are displayed together in a single scrollable daily view. The dashboard anchors to today's schedule on launch.
+
+### Material 3 Theme
+Full Material 3 design with a dark color scheme, sky-blue accent palette, and Inter typography. A theme toggle switches between light and dark modes.
+
+### Midnight Persistence
+Android alarm listeners survive Doze mode and device reboots (via `BootReceiver`). Widget alarms and day-boundary updates remain reliable across sleep and restart cycles.
 
 ---
 
-## ⚡ Key Features
+## Screenshots
 
-### 📅 Intelligent Schedule Overhaul
-- **Dynamic Excel/CSV Import**: Automated parsing of complex university spreadsheets with intelligent time-slot detection.
-- **Double-Quote CSV Support**: Robust handling of complex cells and multiline strings during imports.
-- **Strict Sheet Isolation**: Explicit sheet selection ensures data integrity for individual sections and batches.
-- **ISO 8601 Compliance**: Robust date parsing architecture for seamless synchronization across semesters.
-
-### 🖼️ Premium Widget Ecosystem
-- **Premium Dark UI**: Deep navy widget design with high-contrast typography and sky-blue accents, optimized for at-a-glance readability on any home screen.
-- **Adaptive Sizing**: Native Support for Small (2x1), Medium (4x2), and Large (4x4) interactive layouts.
-- **Interactive Checkbox**: Mark tasks as completed directly from the home screen with instant state-syncing.
-- **Smart Countdown**: Real-time "Up Next" tracking for upcoming classes and assignments.
-- **Persistent Alarm Ticks**: Native Android listeners and Doze-mode persistence for 24/7 accuracy.
-
-### ✅ Integrated Task Management
-- **Context-Aware Tasks**: Link assignments directly to specific course dates.
-- **Unified Timeline**: View classes and to-dos in a single, chronological dashboard.
-- **Smart Indexing**: Chronologically-aware view that always anchors to "Today's" schedule on app launch.
-
-### 🎨 Material 3 Architecture (v3.0)
-- **Modern Tokens**: Updated UI to use `surfaceContainerHighest` and unified alpha values for premium aesthetics.
-- **High-Contrast Typography**: Readability enhanced with Outfit (Headers) and Inter (Body) font pairings.
-- **Responsive Layouts**: Fully scrollable Sliver components that adapt to high-density content without overflows.
----
-
-## 🛠️ Technology Stack
-
-- **Core**: Flutter / Dart
-- **Database**: SQLite (Local-first reliability)
-- **Native Bridge**: Kotlin (Android AppWidget Provider)
-- **Design System**: Custom dark UI with CSS-inspired XML layouts
-- **State Management**: flutter_riverpod (Provider / Controller patterns)
-- **Utilities**: HomeWidget, Excel Parser, Intl (Localization)
+Screenshots will be added here.
 
 ---
 
-## 🚀 Getting Started
+## Tech Stack
+
+- **Core**: Flutter / Dart 3.0+
+- **State Management**: flutter_riverpod (reactive providers)
+- **Database**: SQLite (via sqflite)
+- **Native Bridge**: Kotlin (AppWidget Provider, ListRemoteViewsService, BootReceiver)
+- **Widget Framework**: home_widget, workmanager
+- **File Parsing**: excel, csv, file_picker
+- **Utilities**: intl, shared_preferences, path
+
+---
+
+## Getting Started
 
 ### Prerequisites
-- Flutter SDK (Latest Stable)
-- Android Studio / VS Code
-- Android Device/Emulator (API 24+)
+
+- Flutter SDK 3.0+ / Dart 3.0+
+- Android Studio or VS Code with Flutter extensions
+- Android device or emulator (API 24+)
 
 ### Installation
+
 1. Clone the repository:
    ```bash
    git clone https://github.com/karbburn/ClassWidget.git
+   cd ClassWidget
    ```
+
 2. Fetch dependencies:
    ```bash
    flutter pub get
    ```
+
 3. Run the application:
    ```bash
    flutter run
    ```
-   
+
 ---
 
-## 📄 License
-Internal Development / Proprietary - © 2026 Karbburn.
+## Project Structure
+
+```
+lib/
+  database/          -- SQLite helper (database_helper.dart)
+  models/            -- Data models (schedule_event.dart, task_item.dart)
+  repositories/      -- Data access layer (schedule_repository, task_repository)
+  providers/         -- Riverpod state providers (theme, database, preferences, widget_data)
+  services/          -- Business logic (schedule import, export, widget sync, preferences)
+  ui/                -- Screens (dashboard, day schedule, tasks, import, preview, add task)
+  utils/             -- Constants, color utilities
+  widgets/           -- Reusable widgets (theme toggle)
+test/
+  database/          -- Database helper tests
+  repositories/      -- Repository unit tests
+  ui/                -- Widget tests
+```
+
+---
+
+## License
+
+MIT

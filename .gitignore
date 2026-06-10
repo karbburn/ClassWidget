@@ -46,3 +46,20 @@ app.*.map.json
 
 # Local Releases
 /releases/
+
+# Analysis artifacts
+*_output.txt
+*_analysis*.txt
+analysis_*.txt
+
+# Agent tooling
+.agent/
+.claude/
+
+# Dev scaffolding
+design-system/
+directives/
+execution/
+
+# Temp files
+.tmp/
